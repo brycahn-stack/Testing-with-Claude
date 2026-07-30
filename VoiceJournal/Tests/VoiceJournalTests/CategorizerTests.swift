@@ -63,4 +63,23 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(routed.first?.destinationID, "note")
         XCTAssertEqual(routed.first?.status, .success)
     }
+
+    /// A destination that returns the passthrough sentinel (e.g. a disconnected
+    /// Google service) must yield to the next destination in line.
+    func testPassthroughFallsToNextDestination() async {
+        struct AlwaysPass: Destination {
+            let id = "pass"
+            let displayName = "Pass"
+            func canHandle(_ entry: JournalEntry, _ result: CategorizationResult) -> Bool { true }
+            func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult {
+                .init(destinationID: id, destinationName: displayName, status: .failed,
+                      detail: RouterPassthrough.marker)
+            }
+        }
+        let router = Router(destinations: [AlwaysPass(), NoteDestination()])
+        let entry = JournalEntry(transcript: "some thought")
+        let result = CategorizationResult(category: .note, confidence: 0.9)
+        let routed = await router.route(entry, result)
+        XCTAssertEqual(routed.first?.destinationID, "note", "Passthrough should fall to the next destination")
+    }
 }

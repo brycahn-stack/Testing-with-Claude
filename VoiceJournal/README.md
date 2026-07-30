@@ -122,9 +122,41 @@ Run the unit tests with **⌘U** (or `xcodebuild test -scheme VoiceJournal`).
 
 ---
 
+## Google connections (Gmail + Google Calendar)
+
+The iOS app has a **Connections** tab where Gmail and Google Calendar can each be
+connected individually via OAuth (`ASWebAuthenticationSession` + PKCE — the
+standard secretless mobile flow). Tokens live in the iOS Keychain; scopes are the
+narrowest possible (Gmail: create drafts only, no reading mail; Calendar: manage
+events only).
+
+Once connected:
+
+- **Gmail** — memos with email intent ("email Sarah about the deck") become
+  ready-to-review **Gmail drafts** (never auto-sent).
+- **Google Calendar** — scheduling memos create Google Calendar events instead of
+  local ones; when disconnected, routing falls back to the local calendar
+  automatically (the router's *passthrough* mechanism).
+
+**One-time setup (required before Connect works):** create a free iOS OAuth
+client in [Google Cloud Console](https://console.cloud.google.com) — enable the
+Gmail + Calendar APIs, configure the consent screen (add yourself as a test
+user), create an **iOS** OAuth client for bundle ID `com.example.VoiceJournal`,
+and paste the client ID into `iOSApp/Google/GoogleService.swift`. Full steps are
+in that file's header comment. The tile icons are styled placeholders — official
+Gmail/Calendar logos must be downloaded from Google's brand resource pages and
+dropped into the asset catalog.
+
+---
+
 ## Roadmap
 
 The MVP captures, sorts, and files. Natural next steps, roughly in priority order:
+
+- [ ] **In-app AI assistant** — a chatbot that reads the journal, proposes actions
+      per connection ("draft this email", "log this workout"), and shows a
+      commit-or-dismiss list on launch. The `RoutingResult.needsConfirmation`
+      status is the seed of that proposed-actions inbox.
 
 - [ ] **LLM categorizer** — an `LLMCategorizer: Categorizer` that extracts richer
       structure (task due dates, workout sets/reps, meal macros) with a

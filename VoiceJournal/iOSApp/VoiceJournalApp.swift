@@ -6,6 +6,7 @@ struct VoiceJournalApp: App {
     @StateObject private var store: JournalStore
     @StateObject private var pipeline: EntryPipeline
     @StateObject private var session: PhoneSessionManager
+    @StateObject private var google = GoogleConnectionsModel()
 
     init() {
         let store = JournalStore()
@@ -17,10 +18,16 @@ struct VoiceJournalApp: App {
 
     var body: some Scene {
         WindowGroup {
-            InboxView()
-                .environmentObject(store)
-                .environmentObject(pipeline)
-                .task { _ = await SpeechTranscriber.requestAuthorization() }
+            TabView {
+                InboxView()
+                    .tabItem { Label("Journal", systemImage: "mic.fill") }
+                ConnectionsView()
+                    .tabItem { Label("Connections", systemImage: "app.connected.to.app.below.fill") }
+            }
+            .environmentObject(store)
+            .environmentObject(pipeline)
+            .environmentObject(google)
+            .task { _ = await SpeechTranscriber.requestAuthorization() }
         }
     }
 }

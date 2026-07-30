@@ -30,7 +30,9 @@ these and registering it with the `Router`. Nothing else changes.
 
 | Destination | Handles | Mechanism | State |
 |---|---|---|---|
-| `CalendarDestination` | Schedule (has a time) | EventKit `EKEvent` | ✅ live |
+| `GmailDraftDestination` | Task with email intent | Gmail API (OAuth) — creates a draft | ✅ built, needs OAuth client ID |
+| `GoogleCalendarDestination` | Schedule (has a time) | Google Calendar API (OAuth) | ✅ built, needs OAuth client ID |
+| `CalendarDestination` | Schedule (fallback) | EventKit `EKEvent` | ✅ live |
 | `RemindersDestination` | Task (no time) | EventKit `EKReminder` | ✅ live |
 | `LogDestination.workout` | Workout | in-app typed log | 🟡 stub |
 | `LogDestination.meal` | Meal | in-app typed log | 🟡 stub |
@@ -40,10 +42,21 @@ these and registering it with the `Router`. Nothing else changes.
 ## Router rules
 
 - Destinations are tried in **priority order**; first that `canHandle` wins.
+- **Passthrough:** a destination can return a sentinel meaning "not applicable
+  right now" (e.g. Google Calendar when not connected) and the router falls
+  through to the next — so Google wins when connected, local otherwise.
 - **Low-confidence** classifications (< 0.5) are held with a `needsConfirmation`
   result instead of being auto-routed — never silently misfile.
 - Auto-created **calendar events** are marked `needsConfirmation` too, since a
   guessed time deserves a human glance.
+
+## Google connections (Connections tab)
+
+The iOS app has a **Connections** tab: Gmail and Google Calendar tiles, each
+individually connectable via OAuth (`ASWebAuthenticationSession` + PKCE, tokens
+in Keychain, minimal scopes — Gmail can only create drafts, Calendar only
+events). Requires a one-time free iOS OAuth client from Google Cloud Console;
+setup steps live in `iOSApp/Google/GoogleService.swift`.
 
 ## What to build next
 

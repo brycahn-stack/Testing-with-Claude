@@ -8,6 +8,14 @@ created: 2026-07-30
 Part of [[Voice Journal]]. The MVP captures, sorts, and files. Next steps, roughly
 in priority order:
 
+- [ ] **Finish Google connections** — the Connections tab, OAuth flow, Gmail
+      draft + Google Calendar destinations are built; needs a Google Cloud OAuth
+      client ID pasted into `GoogleService.swift`, then a device test.
+- [ ] **In-app AI assistant** — a chatbot that reads the journal, proposes
+      actions per connection, and shows a commit-or-dismiss list on launch.
+      `RoutingResult.needsConfirmation` is the seed of that proposed-actions
+      inbox.
+
 - [ ] **HealthKit destinations** — log workouts (`HKWorkout`) and meals
       (dietary samples) instead of in-app-only logs. Unlocks two stubbed
       categories. See [[iOS Integration Options]].

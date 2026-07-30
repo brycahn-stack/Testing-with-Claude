@@ -15,7 +15,11 @@ public struct Router: Sendable {
         confidenceThreshold: Double = KeywordCategorizer.reviewThreshold
     ) {
         // Order matters: more specific / higher-value destinations first.
+        // Google destinations sit ahead of their local equivalents — they defer
+        // (pass through) when the service isn't connected.
         self.destinations = destinations ?? [
+            GmailDraftDestination(),
+            GoogleCalendarDestination(),
             CalendarDestination(),
             RemindersDestination(),
             LogDestination.workout,
@@ -41,6 +45,11 @@ public struct Router: Sendable {
 
         for destination in destinations where destination.canHandle(entry, result) {
             let routed = await destination.route(entry, result)
+            // A passthrough means "not applicable right now" (e.g. Google Calendar
+            // not connected) — fall through to the next destination.
+            if routed.status == .failed && routed.detail == RouterPassthrough.marker {
+                continue
+            }
             return [routed]
         }
         return []
