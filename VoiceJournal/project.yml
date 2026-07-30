@@ -6,6 +6,10 @@
 #     open VoiceJournal.xcodeproj
 #
 # Requires XcodeGen 2.38+ (for multiplatform `supportedDestinations`).
+#
+# XcodeGen owns the Info.plist files (see each target's `info:` block): it writes
+# them on `generate`, merging the properties below with the standard bundle keys
+# (CFBundleIdentifier, CFBundleExecutable, versions, …). They're gitignored.
 
 name: VoiceJournal
 options:
@@ -22,7 +26,6 @@ settings:
     SWIFT_VERSION: "5.9"
     DEVELOPMENT_TEAM: ""        # ← set your Apple Developer team ID to run on device
     CODE_SIGN_STYLE: Automatic
-    GENERATE_INFOPLIST_FILE: YES
 
 targets:
 
@@ -51,7 +54,17 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.VoiceJournal
-        INFOPLIST_FILE: iOSApp/Support/Info.plist
+    info:
+      path: iOSApp/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Voice Journal
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: "Voice Journal uses the microphone so the phone can process the recordings you capture on your watch."
+        NSSpeechRecognitionUsageDescription: "Voice Journal transcribes your recordings on-device so it can sort them into the right place."
+        NSCalendarsUsageDescription: "Voice Journal creates events when you mention a meeting or a specific time."
+        NSCalendarsFullAccessUsageDescription: "Voice Journal creates events when you mention a meeting or a specific time."
+        NSRemindersUsageDescription: "Voice Journal creates reminders from your to-do voice notes."
+        NSRemindersFullAccessUsageDescription: "Voice Journal creates reminders from your to-do voice notes."
 
   # watchOS app — the one-tap mic that captures memos.
   VoiceJournalWatch:
@@ -64,7 +77,14 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.VoiceJournal.watchkitapp
-        INFOPLIST_FILE: WatchApp/Support/Info.plist
+    info:
+      path: WatchApp/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Voice Journal
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.example.VoiceJournal
+        WKRunsIndependentlyOfCompanionApp: true
+        NSMicrophoneUsageDescription: "Voice Journal records short voice memos so you can capture thoughts from your wrist."
 
   # Unit tests. App-hosted so it can @testable import both the Core framework
   # (categorizer) and the iOS app module (router / destinations).
