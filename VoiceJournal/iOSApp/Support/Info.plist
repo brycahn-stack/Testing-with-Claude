@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>Voice Journal</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Voice Journal uses the microphone so the phone can process the recordings you capture on your watch.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Voice Journal transcribes your recordings on-device so it can sort them into the right place.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Voice Journal creates events when you mention a meeting or a specific time.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Voice Journal creates events when you mention a meeting or a specific time.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>Voice Journal creates reminders from your to-do voice notes.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Voice Journal creates reminders from your to-do voice notes.</string>
+</dict>
+</plist>

@@ -1,0 +1,92 @@
+# XcodeGen manifest. Generate the Xcode project with:
+#
+#     brew install xcodegen      # once
+#     cd VoiceJournal
+#     xcodegen generate
+#     open VoiceJournal.xcodeproj
+#
+# Requires XcodeGen 2.38+ (for multiplatform `supportedDestinations`).
+
+name: VoiceJournal
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""        # ← set your Apple Developer team ID to run on device
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+
+  # Platform-neutral models + services (models, categorizer, store, WC keys),
+  # compiled once and linked into both apps. Everything here builds on iOS AND
+  # watchOS — anything platform-specific (Speech, EventKit) lives in the apps.
+  VoiceJournalCore:
+    type: framework
+    supportedDestinations: [iOS, watchOS]
+    sources:
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.VoiceJournal.Core
+        SKIP_INSTALL: YES
+
+  # iOS companion app — receives recordings, transcribes, categorizes, routes.
+  VoiceJournal:
+    type: application
+    platform: iOS
+    sources:
+      - iOSApp
+    dependencies:
+      - target: VoiceJournalCore
+      - target: VoiceJournalWatch      # embeds the watch app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.VoiceJournal
+        INFOPLIST_FILE: iOSApp/Support/Info.plist
+
+  # watchOS app — the one-tap mic that captures memos.
+  VoiceJournalWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - WatchApp
+    dependencies:
+      - target: VoiceJournalCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.VoiceJournal.watchkitapp
+        INFOPLIST_FILE: WatchApp/Support/Info.plist
+
+  # Unit tests. App-hosted so it can @testable import both the Core framework
+  # (categorizer) and the iOS app module (router / destinations).
+  VoiceJournalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: VoiceJournalCore
+      - target: VoiceJournal
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/VoiceJournal.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VoiceJournal"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  VoiceJournal:
+    build:
+      targets:
+        VoiceJournal: all
+        VoiceJournalWatch: all
+    test:
+      targets:
+        - VoiceJournalTests
