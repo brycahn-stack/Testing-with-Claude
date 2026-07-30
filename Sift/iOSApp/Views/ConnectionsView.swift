@@ -6,6 +6,18 @@ import SiftCore
 /// listed for transparency; Google services carry real OAuth state.
 struct ConnectionsView: View {
     @EnvironmentObject private var google: GoogleConnectionsModel
+    @EnvironmentObject private var trust: TrustSettings
+
+    /// Destinations the user can set a trust level for, in display order.
+    private let trustable: [(id: String, name: String)] = [
+        ("google.gmail", "Gmail"),
+        ("google.calendar", "Google Calendar"),
+        ("calendar", "Calendar"),
+        ("reminders", "Reminders"),
+        ("log.workout", "Workout Log"),
+        ("log.meal", "Meal Log"),
+        ("log.idea", "Idea Inbox")
+    ]
 
     var body: some View {
         NavigationStack {
@@ -34,7 +46,24 @@ struct ConnectionsView: View {
                 }
 
                 Section {
-                    Text("Connections are granted individually and use the narrowest scopes possible: Gmail can only create drafts (it can't read your mail), and Google Calendar can only manage events. Tokens are stored in the iOS Keychain. Disconnect any time.")
+                    ForEach(trustable, id: \.id) { destination in
+                        Picker(destination.name, selection: Binding(
+                            get: { trust.level(for: destination.id) },
+                            set: { trust.setLevel($0, for: destination.id) }
+                        )) {
+                            ForEach(TrustLevel.allCases, id: \.self) { level in
+                                Text(level.displayName).tag(level)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("When to ask")
+                } footer: {
+                    Text("“Auto when confident” lets Sift act without waiting, above \(Int(TrustSettings.autoApproveThreshold * 100))% confidence. Sending email and inviting people always waits for you, whatever this is set to.")
+                }
+
+                Section {
+                    Text("Connections are granted individually with the narrowest scopes possible: Gmail can send mail and save drafts but cannot read your inbox, and Google Calendar can only manage events. Tokens are stored in the iOS Keychain. Disconnect any time.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -78,6 +107,11 @@ struct GoogleConnectionRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(service.displayName).font(.body)
                 Text(service.blurb).font(.caption).foregroundStyle(.secondary)
+                if google.isConnected(service) {
+                    Text(service.capabilitySummary)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
             Spacer(minLength: 8)
             control

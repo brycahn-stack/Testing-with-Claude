@@ -12,16 +12,26 @@ where it goes and performs the hand-off.
 
 ## The `Destination` protocol
 
-Every integration is one conformance:
+Every integration is one conformance, split into two phases:
 
 ```swift
 protocol Destination {
     var id: String { get }
     var displayName: String { get }
     func canHandle(_ entry: JournalEntry, _ result: CategorizationResult) -> Bool
-    func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult
+    /// No side effects — safe to run unattended.
+    func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> ProposedAction?
+    /// The real hand-off; only runs after the user approves.
+    func execute(_ action: ProposedAction) async -> RoutingResult
 }
 ```
+
+**Propose/execute is the safety model.** Nothing reaches Gmail or Calendar until
+a human approves it, which is what makes an AI proposer viable — a wrong
+proposal is a card you dismiss, not an email someone received. Returning `nil`
+from `propose` means "declining", so the router falls through to the next
+destination (how Google destinations shadow their Apple equivalents only while
+connected).
 
 Adding a new integration (e.g. Obsidian, Notion, HealthKit) means writing one of
 these and registering it with the `Router`. Nothing else changes.
@@ -30,7 +40,7 @@ these and registering it with the `Router`. Nothing else changes.
 
 | Destination | Handles | Mechanism | State |
 |---|---|---|---|
-| `GmailDraftDestination` | Task with email intent | Gmail API (OAuth) — creates a draft | ✅ built, needs OAuth client ID |
+| `GmailDestination` | Task with email intent | Gmail API (OAuth) — sends or drafts | ✅ built, needs OAuth client ID |
 | `GoogleCalendarDestination` | Schedule (has a time) | Google Calendar API (OAuth) | ✅ built, needs OAuth client ID |
 | `CalendarDestination` | Schedule (fallback) | EventKit `EKEvent` | ✅ live |
 | `RemindersDestination` | Task (no time) | EventKit `EKReminder` | ✅ live |
@@ -41,14 +51,17 @@ these and registering it with the `Router`. Nothing else changes.
 
 ## Router rules
 
-- Destinations are tried in **priority order**; first that `canHandle` wins.
-- **Passthrough:** a destination can return a sentinel meaning "not applicable
-  right now" (e.g. Google Calendar when not connected) and the router falls
-  through to the next — so Google wins when connected, local otherwise.
-- **Low-confidence** classifications (< 0.5) are held with a `needsConfirmation`
-  result instead of being auto-routed — never silently misfile.
-- Auto-created **calendar events** are marked `needsConfirmation` too, since a
-  guessed time deserves a human glance.
+- Destinations are tried in **priority order**; the first that `canHandle`s the
+  entry *and* returns a proposal wins.
+- A destination returning `nil` is **declining** (e.g. Google Calendar when not
+  connected), so the next one gets a turn — Google wins when connected, Apple
+  otherwise.
+- Proposals land in the **Review queue** (`ProposalStore`) as `.pending`.
+- **Trust levels** decide what skips the queue: *always ask* vs *auto when
+  confident* (≥80%). Sending email and inviting guests are `isHighStakes` and
+  never auto-approve, whatever the setting.
+
+See [[Assistant and Review Queue]] for the confirmation UI.
 
 ## Google connections (Connections tab)
 

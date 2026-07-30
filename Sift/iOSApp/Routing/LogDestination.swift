@@ -22,17 +22,33 @@ struct LogDestination: Destination {
         result.category == handledCategory
     }
 
-    func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult {
-        // The entry already lives in the JournalStore, so "logging" here just
-        // records that it was filed under this bucket. Downstream integrations
-        // (HealthKit, Notes) would hook in at this point.
+    func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> ProposedAction? {
+        ProposedAction(
+            entryID: entry.id,
+            destinationID: id,
+            destinationName: displayName,
+            payload: .logEntry(LogDraft(
+                kind: handledCategory,
+                summary: TitleBuilder.cleanTitle(from: entry.transcript, maxWords: 12),
+                // Structured fields land here once a model does the extraction
+                // (sets/reps, calories/macros). Empty for the keyword proposer.
+                fields: [:]
+            )),
+            reasoning: "Matched \(handledCategory.displayName.lowercased()) language.",
+            confidence: result.confidence
+        )
+    }
+
+    func execute(_ action: ProposedAction) async -> RoutingResult {
+        // The entry already lives in the JournalStore, so "logging" here records
+        // that it was filed under this bucket. HealthKit/Notes hook in at this point.
         .init(destinationID: id, destinationName: displayName, status: .success,
               detail: "Filed to \(displayName)")
     }
 }
 
 /// The fallback for free-form thoughts that don't match anything — they simply
-/// stay in the journal as a note. Always "succeeds".
+/// stay in the journal as a note.
 struct NoteDestination: Destination {
     let id = "note"
     let displayName = "Journal"
@@ -41,7 +57,21 @@ struct NoteDestination: Destination {
         result.category == .note
     }
 
-    func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult {
+    func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> ProposedAction? {
+        ProposedAction(
+            entryID: entry.id,
+            destinationID: id,
+            destinationName: displayName,
+            payload: .note(NoteDraft(
+                title: TitleBuilder.cleanTitle(from: entry.transcript),
+                body: entry.transcript
+            )),
+            reasoning: "No clear action — keeping it as a note.",
+            confidence: result.confidence
+        )
+    }
+
+    func execute(_ action: ProposedAction) async -> RoutingResult {
         .init(destinationID: id, destinationName: displayName, status: .success,
               detail: "Kept as a note")
     }

@@ -8,13 +8,15 @@ created: 2026-07-30
 Part of [[Sift]]. The MVP captures, sorts, and files. Next steps, roughly
 in priority order:
 
-- [ ] **Finish Google connections** — the Connections tab, OAuth flow, Gmail
-      draft + Google Calendar destinations are built; needs a Google Cloud OAuth
-      client ID pasted into `GoogleService.swift`, then a device test.
-- [ ] **In-app AI assistant** — a chatbot that reads the journal, proposes
-      actions per connection, and shows a commit-or-dismiss list on launch.
-      `RoutingResult.needsConfirmation` is the seed of that proposed-actions
-      inbox.
+- [ ] **Finish Google connections** — Connections tab, OAuth, Gmail send +
+      Google Calendar destinations are built; needs a Google Cloud OAuth client
+      ID pasted into `GoogleService.swift`, then a device test.
+- [ ] **Real model behind the Assistant** — Apple Foundation Models (iOS 26)
+      replacing `LocalQueryResponder`, emitting typed `ActionPayload`s straight
+      into the Review queue. See [[Assistant and Review Queue]].
+- [ ] **Background task assertion** — wrap the ingest pipeline in
+      `beginBackgroundTask` so proposals finish generating during the watch
+      hand-off wake instead of being truncated.
 
 - [ ] **HealthKit destinations** — log workouts (`HKWorkout`) and meals
       (dietary samples) instead of in-app-only logs. Unlocks two stubbed

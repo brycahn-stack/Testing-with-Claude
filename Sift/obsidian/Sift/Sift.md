@@ -27,6 +27,7 @@ recording and summarizing; Sift *moves things* into the places you already live.
 - [[Architecture]] — how the watch, phone, and shared framework fit together
 - [[Categorization Engine]] — how free speech becomes a category
 - [[Routing and Integrations]] — where entries end up, and how to add destinations
+- [[Assistant and Review Queue]] — propose → confirm → execute, and the AI seam
 - [[iOS Integration Options]] — the full menu of apps we could connect to
 - [[Roadmap]] — what's next
 - [[Build and Setup]] — clone → generate → build
@@ -41,6 +42,11 @@ recording and summarizing; Sift *moves things* into the places you already live.
 | Categorizer (6 categories) | ✅ built |
 | Reminders destination | ✅ live |
 | Calendar destination | ✅ live |
+| Propose → confirm → execute | ✅ built |
+| Review queue + confirmation previews | ✅ built |
+| Gmail send / Google Calendar | ✅ built, needs OAuth client ID |
+| Assistant tab (journal Q&A) | ✅ built, local responder |
+| AI model behind the assistant | ⏳ Foundation Models next |
 | Workout / Meal / Idea | 🟡 in-app logs (stubbed) |
 | Compiled on Apple toolchain | ⏳ first build in Xcode 26 |
 

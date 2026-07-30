@@ -39,21 +39,45 @@ struct RemindersDestination: Destination {
         result.category == .task && result.detectedDates.isEmpty
     }
 
-    func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult {
+    func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> ProposedAction? {
+        ProposedAction(
+            entryID: entry.id,
+            destinationID: id,
+            destinationName: displayName,
+            payload: .reminder(ReminderDraft(
+                title: TitleBuilder.cleanTitle(from: entry.transcript),
+                notes: entry.transcript,
+                dueDate: result.detectedDates.first
+            )),
+            reasoning: "Sounds like a to-do with no specific time.",
+            confidence: result.confidence
+        )
+    }
+
+    func execute(_ action: ProposedAction) async -> RoutingResult {
+        guard case .reminder(let draft) = action.payload else {
+            return .init(destinationID: id, destinationName: displayName, status: .failed,
+                         detail: "Wrong payload type")
+        }
         guard await EventKitAccess.shared.requestReminders() else {
             return .init(destinationID: id, destinationName: displayName, status: .failed,
                          detail: "Reminders access denied")
         }
         let store = await EventKitAccess.shared.store
         let reminder = EKReminder(eventStore: store)
-        reminder.title = TitleBuilder.cleanTitle(from: entry.transcript)
-        reminder.notes = entry.transcript
+        reminder.title = draft.title
+        reminder.notes = draft.notes
         reminder.calendar = store.defaultCalendarForNewReminders()
+        if let due = draft.dueDate {
+            reminder.dueDateComponents = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute], from: due
+            )
+        }
 
         do {
             try store.save(reminder, commit: true)
             return .init(destinationID: id, destinationName: displayName, status: .success,
-                         detail: "Reminder: \(reminder.title ?? "")", externalID: reminder.calendarItemIdentifier)
+                         detail: "Reminder: \(draft.title)", externalID: reminder.calendarItemIdentifier)
         } catch {
             return .init(destinationID: id, destinationName: displayName, status: .failed,
                          detail: error.localizedDescription)
@@ -61,7 +85,8 @@ struct RemindersDestination: Destination {
     }
 }
 
-/// Turns scheduling memos ("meeting tomorrow at 3") into Calendar events.
+/// Turns scheduling memos ("meeting tomorrow at 3") into Apple Calendar events.
+/// Acts as the fallback when Google Calendar isn't connected.
 struct CalendarDestination: Destination {
     let id = "calendar"
     let displayName = "Calendar"
@@ -70,10 +95,28 @@ struct CalendarDestination: Destination {
         result.category == .schedule && !result.detectedDates.isEmpty
     }
 
-    func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> RoutingResult {
-        guard let start = result.detectedDates.first else {
+    func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> ProposedAction? {
+        guard let start = result.detectedDates.first else { return nil }
+        return ProposedAction(
+            entryID: entry.id,
+            destinationID: id,
+            destinationName: displayName,
+            payload: .calendarEvent(CalendarEventDraft(
+                title: TitleBuilder.cleanTitle(from: entry.transcript),
+                start: start,
+                // Default one-hour block; adjustable in the confirmation sheet.
+                end: start.addingTimeInterval(3600),
+                notes: entry.transcript
+            )),
+            reasoning: "Heard a specific time, so this looks like a calendar event.",
+            confidence: result.confidence
+        )
+    }
+
+    func execute(_ action: ProposedAction) async -> RoutingResult {
+        guard case .calendarEvent(let draft) = action.payload else {
             return .init(destinationID: id, destinationName: displayName, status: .failed,
-                         detail: "No date detected")
+                         detail: "Wrong payload type")
         }
         guard await EventKitAccess.shared.requestCalendar() else {
             return .init(destinationID: id, destinationName: displayName, status: .failed,
@@ -81,40 +124,22 @@ struct CalendarDestination: Destination {
         }
         let store = await EventKitAccess.shared.store
         let event = EKEvent(eventStore: store)
-        event.title = TitleBuilder.cleanTitle(from: entry.transcript)
-        event.notes = entry.transcript
-        event.startDate = start
-        // Default one-hour block; the user can adjust it in Calendar.
-        event.endDate = start.addingTimeInterval(3600)
+        event.title = draft.title
+        event.notes = draft.notes
+        event.startDate = draft.start
+        event.endDate = draft.end
+        event.isAllDay = draft.isAllDay
+        event.location = draft.location
         event.calendar = store.defaultCalendarForNewEvents
 
-        // Created but flagged for confirmation — auto-creating calendar events from
-        // a guessed time deserves a human glance before it's trusted.
         do {
             try store.save(event, span: .thisEvent, commit: true)
-            return .init(destinationID: id, destinationName: displayName, status: .needsConfirmation,
-                         detail: "Event: \(event.title ?? "") @ \(start.formatted(date: .abbreviated, time: .shortened))",
+            return .init(destinationID: id, destinationName: displayName, status: .success,
+                         detail: "\(draft.title) — \(draft.start.formatted(date: .abbreviated, time: .shortened))",
                          externalID: event.eventIdentifier)
         } catch {
             return .init(destinationID: id, destinationName: displayName, status: .failed,
                          detail: error.localizedDescription)
         }
-    }
-}
-
-/// Small helper to make a tidy title from a raw transcript.
-enum TitleBuilder {
-    static func cleanTitle(from transcript: String, maxWords: Int = 8) -> String {
-        var text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Strip common lead-ins so "remind me to call mom" becomes "Call mom".
-        for prefix in ["remind me to ", "remind me ", "i need to ", "i have to ", "don't forget to ", "note to self "] {
-            if text.lowercased().hasPrefix(prefix) {
-                text = String(text.dropFirst(prefix.count))
-                break
-            }
-        }
-        let words = text.split(separator: " ").prefix(maxWords).joined(separator: " ")
-        let title = words.isEmpty ? text : words
-        return title.prefix(1).uppercased() + title.dropFirst()
     }
 }

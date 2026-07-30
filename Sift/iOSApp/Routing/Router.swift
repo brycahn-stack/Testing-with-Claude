@@ -1,11 +1,14 @@
 import Foundation
 import SiftCore
 
-/// Decides where a classified entry goes and executes the hand-off.
+/// Turns a classified entry into proposed actions. **Never** performs side
+/// effects — that's `execute`, and it only runs after approval.
 ///
-/// Destinations are tried in priority order; the first that `canHandle` the entry
-/// wins. Low-confidence classifications are held back for manual review instead of
-/// being auto-routed to the wrong place.
+/// Destinations are tried in priority order; the first that both `canHandle`s
+/// the entry and returns a proposal wins. A destination that returns nil is
+/// declining (e.g. Google Calendar when it isn't connected), so the next one
+/// gets a turn — that's how Google destinations shadow their Apple equivalents
+/// only while connected.
 public struct Router: Sendable {
     private let destinations: [Destination]
     private let confidenceThreshold: Double
@@ -14,11 +17,10 @@ public struct Router: Sendable {
         destinations: [Destination]? = nil,
         confidenceThreshold: Double = KeywordCategorizer.reviewThreshold
     ) {
-        // Order matters: more specific / higher-value destinations first.
-        // Google destinations sit ahead of their local equivalents — they defer
-        // (pass through) when the service isn't connected.
+        // Order matters: Google destinations sit ahead of their local
+        // equivalents and decline when disconnected.
         self.destinations = destinations ?? [
-            GmailDraftDestination(),
+            GmailDestination(),
             GoogleCalendarDestination(),
             CalendarDestination(),
             RemindersDestination(),
@@ -30,28 +32,29 @@ public struct Router: Sendable {
         self.confidenceThreshold = confidenceThreshold
     }
 
-    /// Routes the entry, returning the results to store on it. When confidence is
-    /// low, returns a single `needsConfirmation` result and skips side effects so
-    /// nothing lands in the wrong app without the user's blessing.
-    public func route(_ entry: JournalEntry, _ result: CategorizationResult) async -> [RoutingResult] {
-        guard result.confidence >= confidenceThreshold else {
-            return [RoutingResult(
-                destinationID: "review",
-                destinationName: "Needs Review",
-                status: .needsConfirmation,
-                detail: "Not sure where this goes (\(result.category.displayName), \(Int(result.confidence * 100))% confident)"
-            )]
-        }
-
+    /// Builds the proposals for an entry. Low-confidence classifications still
+    /// produce a proposal — it just carries the low confidence forward, so the
+    /// Review tab shows it and no trust setting will auto-approve it.
+    public func propose(_ entry: JournalEntry, _ result: CategorizationResult) async -> [ProposedAction] {
         for destination in destinations where destination.canHandle(entry, result) {
-            let routed = await destination.route(entry, result)
-            // A passthrough means "not applicable right now" (e.g. Google Calendar
-            // not connected) — fall through to the next destination.
-            if routed.status == .failed && routed.detail == RouterPassthrough.marker {
-                continue
+            if let proposal = await destination.propose(entry, result) {
+                return [proposal]
             }
-            return [routed]
         }
         return []
+    }
+
+    /// Runs an approved action against its destination.
+    public func execute(_ action: ProposedAction) async -> RoutingResult {
+        guard let destination = destinations.first(where: { $0.id == action.destinationID }) else {
+            return .init(destinationID: action.destinationID, destinationName: action.destinationName,
+                         status: .failed, detail: "No destination registered for \(action.destinationID)")
+        }
+        return await destination.execute(action)
+    }
+
+    /// True when a proposal is confident enough to be trusted at all.
+    public func meetsConfidenceBar(_ action: ProposedAction) -> Bool {
+        action.confidence >= confidenceThreshold
     }
 }

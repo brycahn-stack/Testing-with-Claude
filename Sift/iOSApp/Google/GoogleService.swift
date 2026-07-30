@@ -45,14 +45,32 @@ enum GoogleService: String, CaseIterable, Identifiable, Codable, Sendable {
     var blurb: String {
         switch self {
         case .gmail:
-            return "Turn \"email Sarah about the deck\" into a ready-to-send Gmail draft."
+            return "Compose and send email from a memo — always after you review it."
         case .googleCalendar:
-            return "Send scheduling memos to Google Calendar instead of the local calendar."
+            return "Create events on your Google Calendar instead of the local one."
         }
     }
 
-    /// Minimal scopes: drafts only for Gmail (no read access), events only for
-    /// Calendar (no full calendar access).
+    /// Spelled out in the Connections list so the permission is never a mystery.
+    var capabilitySummary: String {
+        switch self {
+        case .gmail:
+            return "Can send mail and save drafts. Cannot read your inbox."
+        case .googleCalendar:
+            return "Can create and edit events. Cannot see other calendars."
+        }
+    }
+
+    /// Minimal scopes for what Sift actually does.
+    ///
+    /// `gmail.compose` covers both saving drafts *and* sending — it does **not**
+    /// grant read access to the inbox, which is the point: Sift can write mail
+    /// on your behalf but can never read your mail. `calendar.events` likewise
+    /// manages events without full calendar access.
+    ///
+    /// Both are "sensitive" scopes in Google's tiering: fine for up to 100 test
+    /// users with no review, and requiring standard OAuth verification (but not
+    /// the heavier CASA security assessment) to ship publicly.
     var scopes: [String] {
         switch self {
         case .gmail:          return ["https://www.googleapis.com/auth/gmail.compose"]

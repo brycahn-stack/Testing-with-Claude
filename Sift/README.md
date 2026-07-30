@@ -123,6 +123,50 @@ Run the unit tests with **⌘U** (or `xcodebuild test -scheme Sift`).
 
 ---
 
+## Propose → confirm → execute
+
+Sift never acts on a memo directly. Every destination splits in two:
+
+- **`propose`** builds a typed, editable `ProposedAction` and has **no side
+  effects** — safe to run unattended, including from a background wake.
+- **`execute`** performs the real hand-off, and only runs after you approve.
+
+That split is what makes an AI proposer safe: a wrong proposal is a card you
+dismiss, not an email someone already received.
+
+**The Review tab** is the commit-or-dismiss queue. Each card shows what would
+happen, the memo it came from, and why Sift thinks so. Tapping *Review* opens a
+confirmation sheet rendered the way the destination app itself would show it —
+a Gmail compose window, a Calendar event editor — with every field editable
+before you commit.
+
+**Trust levels** (per destination, in Connections) are the dial between magic and
+control: *always ask*, or *auto when confident* (≥80%). Two things ignore the
+setting and always wait for you: **sending email** and **inviting people to
+events**. "Approve all" skips those too.
+
+**Recipient addresses are never guessed.** Sift extracts the *name* it heard
+("Jordan") and leaves the To field empty — Send stays disabled until you supply a
+real address. Guessing is how you email the wrong person.
+
+## Assistant
+
+A tab that can read your whole journal and answer questions about it — category
+round-ups, weekly summaries, free-text search. It reaches the journal through a
+single `JournalContext` choke point, which is the one place to audit AI access or
+add redaction later.
+
+It ships with `LocalQueryResponder`: deterministic, on-device, and useful today
+(no model required). The `AssistantResponder` protocol is the seam for a real
+model — the plan is Apple's **Foundation Models** framework (iOS 26), which runs
+on-device with structured output, so journal contents never leave the phone. A
+cloud model would be an explicit opt-in, never a default.
+
+Like everything else, the assistant **proposes but never executes**: anything it
+wants to do becomes a card in the Review queue.
+
+---
+
 ## Google connections (Gmail + Google Calendar)
 
 The iOS app has a **Connections** tab where Gmail and Google Calendar can each be
@@ -133,11 +177,17 @@ events only).
 
 Once connected:
 
-- **Gmail** — memos with email intent ("email Sarah about the deck") become
-  ready-to-review **Gmail drafts** (never auto-sent).
+- **Gmail** — memos with email intent ("email Sarah about the deck") are composed
+  into a real message that you review and then **send** (or save as a draft). The
+  `gmail.compose` scope covers sending *and* drafting but grants **no read access
+  to your inbox**.
 - **Google Calendar** — scheduling memos create Google Calendar events instead of
-  local ones; when disconnected, routing falls back to the local calendar
-  automatically (the router's *passthrough* mechanism).
+  local ones; when disconnected, the destination declines and routing falls back
+  to the local Apple calendar automatically.
+
+Both scopes are "sensitive" in Google's tiering: usable with up to **100 test
+users with no review**, and requiring standard OAuth verification (~10 days, but
+*not* the heavier CASA security assessment) to ship publicly.
 
 **One-time setup (required before Connect works):** create a free iOS OAuth
 client in [Google Cloud Console](https://console.cloud.google.com) — enable the
