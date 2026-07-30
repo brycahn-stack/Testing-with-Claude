@@ -44,10 +44,15 @@ these and registering it with the `Router`. Nothing else changes.
 | `GoogleCalendarDestination` | Schedule (has a time) | Google Calendar API (OAuth) | ✅ built, needs OAuth client ID |
 | `CalendarDestination` | Schedule (fallback) | EventKit `EKEvent` | ✅ live |
 | `RemindersDestination` | Task (no time) | EventKit `EKReminder` | ✅ live |
+| `ObsidianProfileDestination` | "Remember that I…" | appends to your `About Me` note | ✅ built |
+| `ObsidianDestination` | Note, Business Idea | writes Markdown into a vault | ✅ built |
 | `LogDestination.workout` | Workout | in-app typed log | 🟡 stub |
 | `LogDestination.meal` | Meal | in-app typed log | 🟡 stub |
-| `LogDestination.idea` | Business Idea | in-app typed log | 🟡 stub |
-| `NoteDestination` | Note | kept in journal | ✅ |
+| `LogDestination.idea` | Business Idea (fallback) | in-app typed log | 🟡 stub |
+| `NoteDestination` | Note (fallback) | kept in journal | ✅ |
+
+Obsidian is the one destination that both reads and writes — see
+[[Obsidian Connection]].
 
 ## Router rules
 
@@ -58,8 +63,8 @@ these and registering it with the `Router`. Nothing else changes.
   otherwise.
 - Proposals land in the **Review queue** (`ProposalStore`) as `.pending`.
 - **Trust levels** decide what skips the queue: *always ask* vs *auto when
-  confident* (≥80%). Sending email and inviting guests are `isHighStakes` and
-  never auto-approve, whatever the setting.
+  confident* (≥80%). Sending email, inviting guests, and appending to a note you
+  wrote are `isHighStakes` and never auto-approve, whatever the setting.
 
 See [[Assistant and Review Queue]] for the confirmation UI.
 

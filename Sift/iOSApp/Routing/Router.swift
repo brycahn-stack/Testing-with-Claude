@@ -17,13 +17,19 @@ public struct Router: Sendable {
         destinations: [Destination]? = nil,
         confidenceThreshold: Double = KeywordCategorizer.reviewThreshold
     ) {
-        // Order matters: Google destinations sit ahead of their local
+        // Order matters: connected destinations sit ahead of their local
         // equivalents and decline when disconnected.
         self.destinations = destinations ?? [
+            // First, because "remember that I prefer mornings" would otherwise
+            // read as a task. Its intent match is narrow enough to lead with.
+            ObsidianProfileDestination(),
             GmailDestination(),
             GoogleCalendarDestination(),
             CalendarDestination(),
             RemindersDestination(),
+            // Ahead of the in-app logs it replaces: ideas and notes go to the
+            // vault when there is one, and to the log when there isn't.
+            ObsidianDestination(),
             LogDestination.workout,
             LogDestination.meal,
             LogDestination.idea,

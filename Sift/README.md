@@ -37,9 +37,12 @@ is where the name comes from.
    transcript onto one of: **Business Idea · Task · Schedule · Workout · Meal ·
    Note**, with a confidence score.
 4. **Route (phone).** The `Router` picks a `Destination`:
-   - **Task** (no time) → **Reminders** (`EventKit`)
-   - **Schedule** / task with a time → **Calendar** event (`EventKit`)
-   - **Workout / Meal / Business Idea** → typed in-app logs
+   - **Task** (no time) → **Reminders** (`EventKit`), or **Gmail** if it sounds
+     like an email
+   - **Schedule** / task with a time → **Calendar** event (`EventKit` or Google)
+   - **Business Idea / Note** → **Obsidian** vault as Markdown, or a typed in-app
+     log when no vault is connected
+   - **Workout / Meal** → typed in-app logs
    - Anything low-confidence is **held for review** instead of being auto-filed.
 5. **Review (phone).** `InboxView` shows a feed with a "Needs Review" section up
    top. Tap any entry to see where it landed and correct the category, which
@@ -63,10 +66,13 @@ Sift/
 │   └── Views/RecordingView.swift
 ├── iOSApp/                      # iOS target
 │   ├── Transcriber.swift        #   Speech framework (iOS only)
-│   ├── EntryPipeline.swift      #   transcribe → categorize → route → store
+│   ├── EntryPipeline.swift      #   transcribe → categorize → propose → store
 │   ├── Connectivity/            #   Receives recordings
-│   ├── Routing/                 #   Destination protocol + Reminders/Calendar/Log
-│   └── Views/                   #   InboxView, EntryDetailView
+│   ├── Google/                  #   OAuth + Keychain for Gmail / Google Calendar
+│   ├── Obsidian/                #   Vault folder access (security-scoped bookmark)
+│   ├── Assistant/               #   JournalContext + the Assistant tab
+│   ├── Routing/                 #   Destination protocol + all destinations
+│   └── Views/                   #   Inbox, Review, Connections, preview sheets
 └── Tests/                       # Unit tests for the categorizer + router
 ```
 
@@ -141,9 +147,9 @@ a Gmail compose window, a Calendar event editor — with every field editable
 before you commit.
 
 **Trust levels** (per destination, in Connections) are the dial between magic and
-control: *always ask*, or *auto when confident* (≥80%). Two things ignore the
-setting and always wait for you: **sending email** and **inviting people to
-events**. "Approve all" skips those too.
+control: *always ask*, or *auto when confident* (≥80%). Three things ignore the
+setting and always wait for you: **sending email**, **inviting people to
+events**, and **appending to a note you wrote**. "Approve all" skips those too.
 
 **Recipient addresses are never guessed.** Sift extracts the *name* it heard
 ("Jordan") and leaves the To field empty — Send stays disabled until you supply a
@@ -200,22 +206,58 @@ dropped into the asset catalog.
 
 ---
 
+## Obsidian
+
+Obsidian is the odd one out: there's no API and no OAuth, because **a vault is
+just a folder of Markdown**. You pick that folder once in Connections, iOS hands
+back a security-scoped bookmark, and that bookmark *is* the connection. If the
+vault syncs through iCloud Drive, notes written on the phone land on your Mac at
+the next sync.
+
+Because it's a folder and not an API, access is genuinely **two-way** — which
+buys two things you can't get from a write-only integration:
+
+- **Real wikilinks.** Sift reads the vault's note names and only links to pages
+  that actually exist. It will never invent a `[[link]]` and leave an empty node
+  in your graph.
+- **Appending to notes you already keep.** Say *"remember that I work best in the
+  mornings"* and it's added to your `About Me` note as a dated bullet under one
+  configurable heading.
+
+New notes carry frontmatter (tags, date, category) and the full transcript, so
+they're searchable and graph-able the moment they arrive.
+
+That append is **the only place Sift edits a file you wrote**, so it's the most
+guarded thing in the app: the intent match is narrow and rejects anything that
+reads like a task ("remember that I need to call the bank" is a to-do, not a
+fact); every addition goes under a single heading so a year of them is one block
+you can delete wholesale; and it's `isHighStakes`, meaning no trust level can
+auto-approve it. The confirmation sheet reads the real file and shows your new
+line highlighted in place.
+
+Ideas and notes go to the vault when one is connected and fall back to the
+in-app log when it isn't — the same way Google Calendar shadows Apple Calendar.
+
+---
+
 ## Roadmap
 
 The MVP captures, sorts, and files. Natural next steps, roughly in priority order:
 
-- [ ] **In-app AI assistant** — a chatbot that reads the journal, proposes actions
-      per connection ("draft this email", "log this workout"), and shows a
-      commit-or-dismiss list on launch. The `RoutingResult.needsConfirmation`
-      status is the seed of that proposed-actions inbox.
-
+- [ ] **Real model behind the Assistant** — Apple Foundation Models (iOS 26)
+      replacing `LocalQueryResponder`, emitting typed `ActionPayload`s straight
+      into the Review queue.
+- [ ] **Background task assertion** — wrap the ingest pipeline in
+      `beginBackgroundTask` so proposals finish generating during the watch
+      hand-off wake instead of being truncated.
 - [ ] **LLM categorizer** — an `LLMCategorizer: Categorizer` that extracts richer
       structure (task due dates, workout sets/reps, meal macros) with a
       confidence the router already knows how to gate on.
 - [ ] **HealthKit destinations** — log workouts (`HKWorkout`) and meals
       (`HKDietaryEnergy`, etc.) instead of in-app-only logs.
-- [ ] **Notes / Things / Notion destinations** for business ideas and long-form
-      thoughts.
+- [ ] **Assistant reads the vault** — the vault is already readable, so answering
+      from your notes as well as your journal is mostly a `JournalContext` change.
+- [ ] **Obsidian daily notes / templates** for vaults that expect a house format.
 - [ ] **On-watch live transcription** (populate `WCKeys.watchTranscript`) for
       instant confirmation before the phone ever sees the audio.
 - [ ] **Confirmation loop** — a lightweight "did I get this right?" prompt for

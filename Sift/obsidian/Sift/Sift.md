@@ -27,6 +27,7 @@ recording and summarizing; Sift *moves things* into the places you already live.
 - [[Architecture]] — how the watch, phone, and shared framework fit together
 - [[Categorization Engine]] — how free speech becomes a category
 - [[Routing and Integrations]] — where entries end up, and how to add destinations
+- [[Obsidian Connection]] — vault access, wikilinks, and the "About Me" append
 - [[Assistant and Review Queue]] — propose → confirm → execute, and the AI seam
 - [[iOS Integration Options]] — the full menu of apps we could connect to
 - [[Roadmap]] — what's next
@@ -45,9 +46,11 @@ recording and summarizing; Sift *moves things* into the places you already live.
 | Propose → confirm → execute | ✅ built |
 | Review queue + confirmation previews | ✅ built |
 | Gmail send / Google Calendar | ✅ built, needs OAuth client ID |
+| Obsidian vault (read + write) | ✅ built |
 | Assistant tab (journal Q&A) | ✅ built, local responder |
 | AI model behind the assistant | ⏳ Foundation Models next |
-| Workout / Meal / Idea | 🟡 in-app logs (stubbed) |
+| Workout / Meal | 🟡 in-app logs (stubbed) |
+| Business Idea / Note | ✅ Obsidian when connected, log otherwise |
 | Compiled on Apple toolchain | ⏳ first build in Xcode 26 |
 
 ## The pipeline in one line

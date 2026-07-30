@@ -188,6 +188,14 @@ struct ProposalCard: View {
                 Label(due.formatted(date: .abbreviated, time: .shortened), systemImage: "clock")
                     .font(.caption).foregroundStyle(.secondary)
             }
+        case .markdownNote(let d):
+            Label(
+                d.mode.isAppend ? "Edits \(d.fileName)" : d.vaultPath,
+                systemImage: d.mode.isAppend ? "square.and.pencil" : "folder"
+            )
+            .font(.caption)
+            // An edit to a file the user wrote is worth a second look.
+            .foregroundStyle(d.mode.isAppend ? .orange : .secondary)
         case .logEntry, .note:
             EmptyView()
         }
@@ -201,6 +209,7 @@ struct ProposalCard: View {
         case .reminder:      return .orange
         case .logEntry:      return .green
         case .note:          return .gray
+        case .markdownNote:  return ObsidianMark.purple
         }
     }
 }

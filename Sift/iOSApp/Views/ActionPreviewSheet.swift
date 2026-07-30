@@ -46,6 +46,10 @@ struct ActionPreviewSheet: View {
                     LogPreview(draft: draft)
                 case .note(let draft):
                     NotePreview(draft: draft)
+                case .markdownNote(let draft):
+                    ObsidianNotePreview(draft: Binding(
+                        get: { draft }, set: { payload = .markdownNote($0) }
+                    ))
                 }
             }
             .navigationTitle(action.destinationName)
@@ -71,10 +75,18 @@ struct ActionPreviewSheet: View {
         }
     }
 
-    /// Guard rails: an email with no valid recipient can't be sent.
+    /// Guard rails: an email with no valid recipient can't be sent, and an empty
+    /// note is just litter in the vault.
     private var canCommit: Bool {
-        if case .email(let draft) = payload { return draft.hasValidRecipient }
-        return true
+        switch payload {
+        case .email(let draft):
+            return draft.hasValidRecipient
+        case .markdownNote(let draft):
+            return !draft.noteName.trimmingCharacters(in: .whitespaces).isEmpty
+                && !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        default:
+            return true
+        }
     }
 
     private var bottomBar: some View {

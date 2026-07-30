@@ -1,19 +1,27 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import SiftCore
 
 /// The Connections tab: every service the app can hand memos to, with individual
 /// connect/disconnect controls. System integrations (Reminders, Calendar) are
-/// listed for transparency; Google services carry real OAuth state.
+/// listed for transparency; Google services carry real OAuth state, and Obsidian
+/// carries a folder grant.
 struct ConnectionsView: View {
     @EnvironmentObject private var google: GoogleConnectionsModel
+    @EnvironmentObject private var obsidian: ObsidianConnection
     @EnvironmentObject private var trust: TrustSettings
 
+    @State private var showingVaultPicker = false
+
     /// Destinations the user can set a trust level for, in display order.
+    /// `obsidian.profile` is deliberately absent: appending to a note you wrote
+    /// is always high-stakes, so there'd be nothing to choose.
     private let trustable: [(id: String, name: String)] = [
         ("google.gmail", "Gmail"),
         ("google.calendar", "Google Calendar"),
         ("calendar", "Calendar"),
         ("reminders", "Reminders"),
+        ("obsidian", "Obsidian"),
         ("log.workout", "Workout Log"),
         ("log.meal", "Meal Log"),
         ("log.idea", "Idea Inbox")
@@ -40,6 +48,8 @@ struct ConnectionsView: View {
                     }
                 }
 
+                obsidianSection
+
                 Section("Built-in (Apple)") {
                     builtInRow(name: "Reminders", detail: "Tasks without a time", systemImage: "checklist", color: .orange)
                     builtInRow(name: "Calendar", detail: "Scheduling memos (fallback when Google Calendar is off)", systemImage: "calendar", color: .red)
@@ -59,16 +69,26 @@ struct ConnectionsView: View {
                 } header: {
                     Text("When to ask")
                 } footer: {
-                    Text("“Auto when confident” lets Sift act without waiting, above \(Int(TrustSettings.autoApproveThreshold * 100))% confidence. Sending email and inviting people always waits for you, whatever this is set to.")
+                    Text("“Auto when confident” lets Sift act without waiting, above \(Int(TrustSettings.autoApproveThreshold * 100))% confidence. Sending email, inviting people, and editing a note you wrote always wait for you, whatever this is set to.")
                 }
 
                 Section {
-                    Text("Connections are granted individually with the narrowest scopes possible: Gmail can send mail and save drafts but cannot read your inbox, and Google Calendar can only manage events. Tokens are stored in the iOS Keychain. Disconnect any time.")
+                    Text("Connections are granted individually with the narrowest scopes possible: Gmail can send mail and save drafts but cannot read your inbox, Google Calendar can only manage events, and Obsidian reaches exactly one folder — the vault you picked. Google tokens are stored in the iOS Keychain. Disconnect any time.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Connections")
+            .onAppear { obsidian.refresh() }
+            // Folder-scoped access: iOS hands back a security-scoped URL for the
+            // vault and nothing else on the device.
+            .fileImporter(
+                isPresented: $showingVaultPicker,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: false
+            ) { result in
+                obsidian.handlePickerResult(result)
+            }
             .alert("Connection Error", isPresented: .init(
                 get: { google.lastError != nil },
                 set: { if !$0 { google.lastError = nil } }
@@ -77,6 +97,123 @@ struct ConnectionsView: View {
             } message: {
                 Text(google.lastError ?? "")
             }
+            .alert("Obsidian Error", isPresented: .init(
+                get: { obsidian.lastError != nil },
+                set: { if !$0 { obsidian.lastError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(obsidian.lastError ?? "")
+            }
+        }
+    }
+
+    // MARK: - Obsidian
+
+    /// Obsidian has no API — a vault is a folder of Markdown. So "connecting" is
+    /// picking that folder once, and the settings below are just *where in it*
+    /// Sift is allowed to write.
+    @ViewBuilder
+    private var obsidianSection: some View {
+        Section {
+            HStack(spacing: 12) {
+                ObsidianIcon()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Obsidian").font(.body)
+                    Text("Write memos into your vault as Markdown.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if obsidian.isConnected {
+                        Text(obsidian.capabilitySummary)
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                Spacer(minLength: 8)
+                obsidianControl
+            }
+            .padding(.vertical, 4)
+
+            if obsidian.isConnected {
+                LabeledContent("Vault", value: obsidian.vaultName ?? "—")
+                LabeledContent("Notes found") {
+                    Text(obsidian.noteCount.map { "\($0)" } ?? "—")
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack {
+                    Text("New notes in")
+                    Spacer()
+                    TextField("Vault root", text: $obsidian.settings.folder)
+                        .multilineTextAlignment(.trailing)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .frame(maxWidth: 160)
+                }
+
+                Toggle("Link to existing notes", isOn: $obsidian.settings.linkToExistingNotes)
+            }
+        } header: {
+            Text("Obsidian")
+        } footer: {
+            Text(obsidian.isConnected
+                 ? "Sift can only see the folder you picked. If your vault syncs through iCloud Drive, notes written here show up on your Mac on the next sync."
+                 : "Pick your vault folder in Files. Works with any vault iOS can reach — iCloud Drive, On My iPhone, or another provider.")
+        }
+
+        if obsidian.isConnected {
+            Section {
+                Toggle("Remember facts about me", isOn: $obsidian.settings.profileCaptureEnabled)
+
+                if obsidian.settings.profileCaptureEnabled {
+                    HStack {
+                        Text("Note")
+                        Spacer()
+                        TextField("About Me", text: $obsidian.settings.profileNoteName)
+                            .multilineTextAlignment(.trailing)
+                            .autocorrectionDisabled()
+                            .frame(maxWidth: 160)
+                    }
+                    HStack {
+                        Text("Under heading")
+                        Spacer()
+                        TextField("From Sift", text: $obsidian.settings.profileHeading)
+                            .multilineTextAlignment(.trailing)
+                            .autocorrectionDisabled()
+                            .frame(maxWidth: 160)
+                    }
+                }
+            } header: {
+                Text("Profile note")
+            } footer: {
+                Text("“Remember that I work best in the mornings” gets added to that note as a dated bullet under that heading. This is the only case where Sift edits a file you already wrote, so it always asks first — and keeping every addition under one heading means you can review or delete them in one go.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var obsidianControl: some View {
+        if obsidian.busy {
+            ProgressView()
+        } else if obsidian.isConnected {
+            Menu {
+                Button {
+                    showingVaultPicker = true
+                } label: {
+                    Label("Change vault", systemImage: "folder")
+                }
+                Button(role: .destructive) {
+                    obsidian.disconnect()
+                } label: {
+                    Label("Disconnect", systemImage: "minus.circle")
+                }
+            } label: {
+                Label("Connected", systemImage: "checkmark.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.green)
+            }
+        } else {
+            Button("Choose Vault") { showingVaultPicker = true }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
         }
     }
 

@@ -35,6 +35,8 @@ The sheet renders the action the way the destination app itself would:
   everything editable.
 - **Calendar** → an event editor: title, start/end with live duration, location,
   notes, guests, and which calendar it lands on.
+- **Obsidian** → the literal Markdown file, frontmatter and all. For an append it
+  reads the *real note* and shows the new line highlighted where it will land.
 - Reminders / logs / notes get simpler equivalents.
 
 **Recipient addresses are never guessed.** Sift extracts the *name* it heard
@@ -50,8 +52,9 @@ Per destination, set in Connections — the dial between magic and control:
 | Always ask | Every action waits for approval. Default for Gmail + Calendar. |
 | Auto when confident | Runs on its own above 80% confidence. Default for reminders and logs. |
 
-Two things ignore the setting entirely and **always** wait: sending email, and
-inviting people to events (`ProposedAction.isHighStakes`).
+Three things ignore the setting entirely and **always** wait
+(`ProposedAction.isHighStakes`): sending email, inviting people to events, and
+appending to a note you wrote — see [[Obsidian Connection]].
 
 ## Assistant tab
 

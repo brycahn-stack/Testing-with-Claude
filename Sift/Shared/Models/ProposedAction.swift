@@ -65,6 +65,9 @@ public struct ProposedAction: Codable, Identifiable, Hashable, Sendable {
         switch payload {
         case .email(let d):        return d.sendImmediately
         case .calendarEvent(let d): return !d.invitees.isEmpty
+        // Creating a new note is additive and reversible; *editing* a file the
+        // user already wrote is not, so appends always get a look.
+        case .markdownNote(let d): return d.mode.isAppend
         default:                    return false
         }
     }
@@ -79,6 +82,7 @@ public enum ActionPayload: Codable, Hashable, Sendable {
     case reminder(ReminderDraft)
     case logEntry(LogDraft)
     case note(NoteDraft)
+    case markdownNote(MarkdownNoteDraft)
 }
 
 // MARK: - Payload types
@@ -171,6 +175,150 @@ public struct NoteDraft: Codable, Hashable, Sendable {
     }
 }
 
+/// A Markdown file destined for an Obsidian vault.
+///
+/// Two shapes, because they carry very different risk: **creating** a note only
+/// adds a file, while **appending** rewrites something the user already owns.
+/// The second is `isHighStakes`, so it never auto-approves.
+///
+/// The struct owns the rendering (`renderedNote` / `renderedAppendix`) so the
+/// confirmation sheet previews the *exact* bytes that will land on disk — no
+/// second code path that could disagree with what actually gets written.
+public struct MarkdownNoteDraft: Codable, Hashable, Sendable {
+    public enum Mode: Codable, Hashable, Sendable {
+        /// Write a new note. The vault never overwrites — a clashing name gets
+        /// a numeric suffix instead.
+        case createNote
+        /// Add a bullet to a note that already exists, under `heading`
+        /// (created at the end of the file if it isn't there yet).
+        case appendToNote(heading: String)
+
+        public var isAppend: Bool {
+            if case .appendToNote = self { return true }
+            return false
+        }
+
+        public var heading: String? {
+            if case .appendToNote(let heading) = self { return heading }
+            return nil
+        }
+    }
+
+    public var mode: Mode
+    /// Vault-relative folder, e.g. "Sift". Empty means the vault root.
+    public var folder: String
+    /// Note name without the `.md` extension — also the H1 of a new note.
+    public var noteName: String
+    /// The prose. For an append this is the single fact being added.
+    public var body: String
+    /// Obsidian tags, without the leading `#`.
+    public var tags: [String]
+    /// Names of notes that already exist in the vault, rendered as `[[wikilinks]]`.
+    public var links: [String]
+    /// Extra YAML frontmatter, rendered in sorted key order for stable diffs.
+    public var frontmatter: [String: String]
+    public var date: Date
+
+    public init(
+        mode: Mode = .createNote,
+        folder: String = "",
+        noteName: String,
+        body: String,
+        tags: [String] = [],
+        links: [String] = [],
+        frontmatter: [String: String] = [:],
+        date: Date = Date()
+    ) {
+        self.mode = mode
+        self.folder = folder
+        self.noteName = noteName
+        self.body = body
+        self.tags = tags
+        self.links = links
+        self.frontmatter = frontmatter
+        self.date = date
+    }
+
+    public var fileName: String { "\(noteName).md" }
+
+    /// Where the file sits relative to the vault root — what the preview shows.
+    public var vaultPath: String {
+        folder.isEmpty ? fileName : "\(folder)/\(fileName)"
+    }
+
+    /// The complete contents of a new note.
+    public var renderedNote: String {
+        var lines: [String] = ["---"]
+        if !tags.isEmpty {
+            lines.append("tags: [\(tags.joined(separator: ", "))]")
+        }
+        for key in frontmatter.keys.sorted() {
+            lines.append("\(key): \(frontmatter[key] ?? "")")
+        }
+        lines.append("---")
+        lines.append("")
+        lines.append("# \(noteName)")
+        lines.append("")
+        lines.append(body)
+        if !links.isEmpty {
+            lines.append("")
+            lines.append("## Related")
+            lines.append("")
+            lines.append(contentsOf: links.map { "- [[\($0)]]" })
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// The single line added to an existing note. Bulleted and dated so a year
+    /// of these still reads as a list rather than a wall of text.
+    public var renderedAppendix: String {
+        var line = "- \(singleLineBody)"
+        if !links.isEmpty {
+            line += " " + links.map { "[[\($0)]]" }.joined(separator: " ")
+        }
+        return line + " — *\(Self.dayStamp(date))*"
+    }
+
+    /// What the confirmation sheet renders, whichever mode this is.
+    public var previewMarkdown: String {
+        switch mode {
+        case .createNote:
+            return renderedNote
+        case .appendToNote(let heading):
+            return "## \(heading)\n\n\(renderedAppendix)\n"
+        }
+    }
+
+    private var singleLineBody: String {
+        body.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    /// `yyyy-MM-dd` without a `DateFormatter`, which is neither `Sendable` nor
+    /// locale-stable — this needs to read the same in every vault.
+    public static func dayStamp(_ date: Date) -> String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// Makes a transcript safe to use as a file name. Obsidian additionally
+    /// treats `[ ] # ^ | ` as unsafe in links, so they go too.
+    public static func sanitizedNoteName(_ raw: String, maxLength: Int = 80) -> String {
+        let forbidden = CharacterSet(charactersIn: "/\\:*?\"<>|[]#^")
+            .union(.controlCharacters)
+        let cleaned = raw.components(separatedBy: forbidden).joined(separator: " ")
+        let collapsed = cleaned.split(whereSeparator: { $0 == " " || $0.isNewline })
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        let trimmed = String(collapsed.prefix(maxLength))
+            .trimmingCharacters(in: .whitespaces)
+        // A dot-leading name hides the file; an empty one can't be written.
+        return trimmed.hasPrefix(".") || trimmed.isEmpty ? "Untitled" : trimmed
+    }
+}
+
 // MARK: - Display helpers
 
 public extension ActionPayload {
@@ -187,6 +335,11 @@ public extension ActionPayload {
             return "Log \(d.kind.displayName.lowercased()): \(d.summary)"
         case .note(let d):
             return "Keep note: \(d.title)"
+        case .markdownNote(let d):
+            switch d.mode {
+            case .createNote:            return "New note: \(d.noteName)"
+            case .appendToNote:          return "Add to \(d.noteName)"
+            }
         }
     }
 
@@ -197,6 +350,8 @@ public extension ActionPayload {
         case .reminder:      return "checklist"
         case .logEntry(let d): return d.kind.systemImage
         case .note:          return "note.text"
+        case .markdownNote(let d):
+            return d.mode.isAppend ? "text.append" : "doc.badge.plus"
         }
     }
 
@@ -208,6 +363,8 @@ public extension ActionPayload {
         case .reminder:      return "Add Reminder"
         case .logEntry:      return "Log It"
         case .note:          return "Save Note"
+        case .markdownNote(let d):
+            return d.mode.isAppend ? "Append" : "Create Note"
         }
     }
 }

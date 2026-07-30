@@ -9,6 +9,7 @@ struct SiftApp: App {
     @StateObject private var pipeline: EntryPipeline
     @StateObject private var session: PhoneSessionManager
     @StateObject private var google = GoogleConnectionsModel()
+    @StateObject private var obsidian = ObsidianConnection()
 
     init() {
         let store = JournalStore()
@@ -43,6 +44,7 @@ struct SiftApp: App {
             .environmentObject(trust)
             .environmentObject(pipeline)
             .environmentObject(google)
+            .environmentObject(obsidian)
             .task {
                 _ = await SpeechTranscriber.requestAuthorization()
                 proposals.pruneResolved()
