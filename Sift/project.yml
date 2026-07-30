@@ -1,0 +1,112 @@
+# XcodeGen manifest. Generate the Xcode project with:
+#
+#     brew install xcodegen      # once
+#     cd Sift
+#     xcodegen generate
+#     open Sift.xcodeproj
+#
+# Requires XcodeGen 2.38+ (for multiplatform `supportedDestinations`).
+#
+# XcodeGen owns the Info.plist files (see each target's `info:` block): it writes
+# them on `generate`, merging the properties below with the standard bundle keys
+# (CFBundleIdentifier, CFBundleExecutable, versions, …). They're gitignored.
+
+name: Sift
+options:
+  bundleIdPrefix: com.brycahn
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""        # ← set your Apple Developer team ID to run on device
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+
+  # Platform-neutral models + services (models, categorizer, store, WC keys),
+  # compiled once and linked into both apps. Everything here builds on iOS AND
+  # watchOS — anything platform-specific (Speech, EventKit) lives in the apps.
+  SiftCore:
+    type: framework
+    supportedDestinations: [iOS, watchOS]
+    sources:
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.brycahn.sift.Core
+        SKIP_INSTALL: YES
+
+  # iOS companion app — receives recordings, transcribes, categorizes, routes.
+  Sift:
+    type: application
+    platform: iOS
+    sources:
+      - iOSApp
+    dependencies:
+      - target: SiftCore
+      - target: SiftWatch      # embeds the watch app
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.brycahn.sift
+    info:
+      path: iOSApp/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Sift
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: "Sift uses the microphone so the phone can process the recordings you capture on your watch."
+        NSSpeechRecognitionUsageDescription: "Sift transcribes your recordings on-device so it can sort them into the right place."
+        NSCalendarsUsageDescription: "Sift creates events when you mention a meeting or a specific time."
+        NSCalendarsFullAccessUsageDescription: "Sift creates events when you mention a meeting or a specific time."
+        NSRemindersUsageDescription: "Sift creates reminders from your to-do voice notes."
+        NSRemindersFullAccessUsageDescription: "Sift creates reminders from your to-do voice notes."
+
+  # watchOS app — the one-tap mic that captures memos.
+  SiftWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - WatchApp
+    dependencies:
+      - target: SiftCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.brycahn.sift.watchkitapp
+    info:
+      path: WatchApp/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Sift
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.brycahn.sift
+        WKRunsIndependentlyOfCompanionApp: true
+        NSMicrophoneUsageDescription: "Sift records short voice memos so you can capture thoughts from your wrist."
+
+  # Unit tests. App-hosted so it can @testable import both the Core framework
+  # (categorizer) and the iOS app module (router / destinations).
+  SiftTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: SiftCore
+      - target: Sift
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Sift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Sift"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Sift:
+    build:
+      targets:
+        Sift: all
+        SiftWatch: all
+    test:
+      targets:
+        - SiftTests
