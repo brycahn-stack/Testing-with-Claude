@@ -41,6 +41,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.brycahn.sift.Core
         SKIP_INSTALL: YES
+        # Frameworks still need an Info.plist to be signed. The app targets get
+        # theirs from the `info:` blocks below; this one has no keys worth
+        # hand-writing, so let Xcode synthesize it.
+        GENERATE_INFOPLIST_FILE: YES
 
   # iOS companion app — receives recordings, transcribes, categorizes, routes.
   Sift:
@@ -114,6 +118,9 @@ targets:
       base:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Sift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Sift"
         BUNDLE_LOADER: "$(TEST_HOST)"
+        # Same as SiftCore — a test bundle needs a plist to sign, and none of
+        # its keys need to be authored by hand.
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Sift:
