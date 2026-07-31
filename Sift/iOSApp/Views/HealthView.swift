@@ -9,6 +9,19 @@ struct HealthView: View {
     @EnvironmentObject private var health: HealthLogStore
     @State private var segment: Segment = .training
 
+    /// One spacing ladder for the whole tab. Both segments draw from it, so a
+    /// gap under "Last 7 days" matches the gap under a day heading instead of
+    /// each row type inventing its own padding.
+    enum Metrics {
+        /// Between stacked lines inside a row (time badge → exercise list).
+        static let lineGap: CGFloat = 8
+        /// Between exercises within one session — tighter than `lineGap`, so a
+        /// session reads as one block rather than a list of loose rows.
+        static let exerciseGap: CGFloat = 5
+        /// Vertical breathing room on a row, above the list's own insets.
+        static let rowPadding: CGFloat = 5
+    }
+
     /// Named `Segment` rather than `Section` so it can't shadow SwiftUI's.
     enum Segment: String, CaseIterable, Identifiable {
         case training = "Training"
@@ -33,7 +46,9 @@ struct HealthView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
-                .padding(.bottom, 8)
+                // Symmetric: without the top inset the control sits flush
+                // against the large title and reads as part of it.
+                .padding(.vertical, 8)
                 .background(.bar)
             }
         }
@@ -111,16 +126,22 @@ private struct WeeklySummary: View {
 
     var body: some View {
         Section("Last 7 days") {
-            HStack {
+            HStack(spacing: 0) {
                 Stat(value: "\(workouts.count)", label: "sessions")
-                Divider()
+                divider
                 Stat(value: "\(totalSets)", label: "sets")
-                Divider()
+                divider
                 Stat(value: volumeText, label: "volume")
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
+            .padding(.vertical, HealthView.Metrics.rowPadding)
         }
+    }
+
+    /// Fixed height rather than a full-bleed `Divider()`, which would stretch to
+    /// the row's full height and collide with the cell's own separators.
+    private var divider: some View {
+        Divider().frame(height: 28)
     }
 
     private var volumeText: String {
@@ -137,7 +158,7 @@ private struct WeeklySummary: View {
         let label: String
 
         var body: some View {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(value).font(.title3.weight(.semibold)).monospacedDigit()
                 Text(label).font(.caption).foregroundStyle(.secondary)
             }
@@ -152,7 +173,7 @@ private struct WorkoutRow: View {
     let session: WorkoutLog
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: HealthView.Metrics.lineGap) {
             HStack {
                 Text(session.date.formatted(date: .omitted, time: .shortened))
                     .font(.caption)
@@ -169,21 +190,25 @@ private struct WorkoutRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(session.exercises) { exercise in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(exercise.name)
-                            .font(.subheadline.weight(.medium))
-                        Spacer(minLength: 12)
-                        Text(exercise.summary)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .multilineTextAlignment(.trailing)
+                // Exercises get their own tighter rhythm; inheriting the outer
+                // gap made a five-exercise session sprawl.
+                VStack(alignment: .leading, spacing: HealthView.Metrics.exerciseGap) {
+                    ForEach(session.exercises) { exercise in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(exercise.name)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer(minLength: 12)
+                            Text(exercise.summary)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .multilineTextAlignment(.trailing)
+                        }
                     }
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, HealthView.Metrics.rowPadding)
     }
 }
 
@@ -212,18 +237,20 @@ private struct MealRow: View {
     let meal: MealLog
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(meal.summary).font(.subheadline.weight(.medium))
-                Spacer()
+        VStack(alignment: .leading, spacing: HealthView.Metrics.exerciseGap) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(meal.summary).font(.subheadline.weight(.semibold))
+                Spacer(minLength: 10)
                 Text(meal.date.formatted(date: .omitted, time: .shortened))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            // No macros stated means no chips at all — a row of zeroes would
+            // read as measured data that nobody measured.
             if !meal.nutrition.isEmpty {
                 MacroLine(nutrition: meal.nutrition)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, HealthView.Metrics.rowPadding)
     }
 }
 
@@ -244,8 +271,8 @@ private struct MacroLine: View {
     private func chip(_ text: String) -> some View {
         Text(text)
             .monospacedDigit()
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
             .background(Capsule().fill(.quaternary))
     }
 }
