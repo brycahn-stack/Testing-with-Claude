@@ -63,6 +63,9 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        # Sign in with Apple — the optional identity layer. Automatic signing
+        # enables the capability on the App ID.
+        com.apple.developer.applesignin: [Default]
     info:
       path: iOSApp/Support/Info.plist
       properties:

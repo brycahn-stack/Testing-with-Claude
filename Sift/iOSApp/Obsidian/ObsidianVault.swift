@@ -308,19 +308,38 @@ enum ObsidianVaultError: LocalizedError {
 // MARK: - Settings
 
 /// What the user configures in Connections. Kept small and boring on purpose —
-/// where new notes go, and which note holds facts about them.
+/// where new notes go, and which notes hold facts about them (and other people).
 struct ObsidianSettings: Codable, Equatable, Sendable {
     /// Vault-relative folder for new notes. Empty writes to the vault root.
     var folder: String = "Sift"
     /// The note that "remember that I…" facts get appended to.
     var profileNoteName: String = "About Me"
     /// The heading those facts land under, so Sift's additions stay in one place
-    /// and are trivial to review or delete in bulk.
+    /// and are trivial to review or delete in bulk. Person notes reuse it.
     var profileHeading: String = "From Sift"
     /// Whether to add `[[wikilinks]]` for vault notes mentioned in a memo.
     var linkToExistingNotes: Bool = true
     /// Whether "remember that I…" memos may append to the profile note at all.
     var profileCaptureEnabled: Bool = true
+    /// Whether "Sarah mentioned…" memos may append to per-person notes.
+    var peopleCaptureEnabled: Bool = true
+    /// Vault-relative folder where person notes live, e.g. `People/Sarah.md`.
+    var peopleFolder: String = "People"
+
+    init() {}
+
+    /// Decoded field-by-field with defaults, so settings stored by an older
+    /// build survive new fields being added instead of silently resetting.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        folder = try c.decodeIfPresent(String.self, forKey: .folder) ?? folder
+        profileNoteName = try c.decodeIfPresent(String.self, forKey: .profileNoteName) ?? profileNoteName
+        profileHeading = try c.decodeIfPresent(String.self, forKey: .profileHeading) ?? profileHeading
+        linkToExistingNotes = try c.decodeIfPresent(Bool.self, forKey: .linkToExistingNotes) ?? linkToExistingNotes
+        profileCaptureEnabled = try c.decodeIfPresent(Bool.self, forKey: .profileCaptureEnabled) ?? profileCaptureEnabled
+        peopleCaptureEnabled = try c.decodeIfPresent(Bool.self, forKey: .peopleCaptureEnabled) ?? peopleCaptureEnabled
+        peopleFolder = try c.decodeIfPresent(String.self, forKey: .peopleFolder) ?? peopleFolder
+    }
 }
 
 /// Bookmark + settings storage. Deliberately plain `UserDefaults` reads rather

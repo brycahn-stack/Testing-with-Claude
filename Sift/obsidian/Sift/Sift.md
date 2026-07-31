@@ -48,6 +48,8 @@ recording and summarizing; Sift *moves things* into the places you already live.
 | Review queue + confirmation previews | ✅ built |
 | Gmail send / Google Calendar | ✅ built, needs OAuth client ID |
 | Obsidian vault (read + write) | ✅ built |
+| Person notes ("Sarah mentioned…") | ✅ built |
+| Account (Apple / Google sign-in, optional) | ✅ built — Google lights up with OAuth ID |
 | Assistant tab (journal Q&A) | ✅ built, local responder |
 | AI model behind the assistant | ⏳ Foundation Models next |
 | Health tab (training + meals) | ✅ built |

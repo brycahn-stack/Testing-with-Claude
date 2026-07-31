@@ -233,13 +233,20 @@ buys two things you can't get from a write-only integration:
 New notes carry frontmatter (tags, date, category) and the full transcript, so
 they're searchable and graph-able the moment they arrive.
 
-That append is **the only place Sift edits a file you wrote**, so it's the most
-guarded thing in the app: the intent match is narrow and rejects anything that
-reads like a task ("remember that I need to call the bank" is a to-do, not a
-fact); every addition goes under a single heading so a year of them is one block
-you can delete wholesale; and it's `isHighStakes`, meaning no trust level can
+That append is **an edit to a file you wrote**, so it's the most guarded thing
+in the app: the intent match is narrow and rejects anything that reads like a
+task ("remember that I need to call the bank" is a to-do, not a fact); every
+addition goes under a single heading so a year of them is one block you can
+delete wholesale; and it's `isHighStakes`, meaning no trust level can
 auto-approve it. The confirmation sheet reads the real file and shows your new
 line highlighted in place.
+
+The same machinery covers **the people in your vault**: *"Sarah mentioned she's
+moving to Austin in the spring"* lands as a dated bullet in your `Sarah` note,
+wherever it lives — or offers to create `People/Sarah.md` if there isn't one.
+The matcher demands a telling verb and a capitalized name, and rejects pronouns
+outright; "Sarah said the meeting moved to Thursday at 3" still becomes a
+calendar proposal, not a line in Sarah's page.
 
 Ideas and notes go to the vault when one is connected and fall back to the
 in-app log when it isn't — the same way Google Calendar shadows Apple Calendar.
@@ -290,6 +297,33 @@ outright. Estimating them is the first thing here that genuinely needs a model.
 
 > HealthKit requires the entitlement to be signed, which needs a paid Apple
 > Developer account.
+
+---
+
+## Account (optional, by design)
+
+Sift has no server — the journal, health log, and vault access all live on the
+phone. So there is nothing for a login to gate, and Sift doesn't pretend
+otherwise: **every feature works signed out**, and the first-launch screen's
+"Continue without an account" is a first-class path, not a shamed footnote.
+
+What signing in does: puts a name on your data, and gives a future sync/backup
+feature its seam. What it doesn't do: anything else. No code path checks for an
+account before doing work.
+
+- **Sign in with Apple** is the primary — native, and working as soon as the
+  development team is set. Apple shares your name and email only on first
+  authorization; Sift stores them in the Keychain immediately.
+- **Sign in with Google** rides the same OAuth client as the Gmail/Calendar
+  connections (identity scopes are non-sensitive — no extra Google Cloud work).
+  The button is disabled with an explanation until the client ID lands, then
+  lights up on its own. Identity is one round trip: Sift reads the name and
+  email from the `id_token` and stores no Google tokens at all.
+- **Signing out** forgets the identity on this phone. It deletes nothing — the
+  journal never belonged to the account.
+
+The account screen also holds small per-person preferences, like the weight unit
+assumed when a memo doesn't say one.
 
 ---
 

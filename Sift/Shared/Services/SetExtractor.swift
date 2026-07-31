@@ -26,7 +26,10 @@ public enum SetExtractor {
         let mentions = exerciseMentions(in: text)
         guard !mentions.isEmpty else { return [] }
 
-        let defaultUnit: WeightUnit = text.contains(" kg") ? .kilograms : .pounds
+        // Speech that names a unit wins; otherwise the user's preferred unit.
+        let defaultUnit: WeightUnit = text.contains(" kg")
+            ? .kilograms
+            : HealthPreferences.defaultWeightUnit
         let nsText = text as NSString
 
         // Each exercise owns the text between its own name and the next one.

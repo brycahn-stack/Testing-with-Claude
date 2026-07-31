@@ -23,6 +23,9 @@ public struct Router: Sendable {
             // First, because "remember that I prefer mornings" would otherwise
             // read as a task. Its intent match is narrow enough to lead with.
             ObsidianProfileDestination(),
+            // Same trick for "Sarah mentioned…" — ahead of the general note
+            // destinations, gated on an equally narrow matcher.
+            ObsidianPersonDestination(),
             GmailDestination(),
             GoogleCalendarDestination(),
             CalendarDestination(),

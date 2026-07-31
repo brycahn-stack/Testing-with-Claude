@@ -22,6 +22,7 @@ struct ConnectionsView: View {
         ("calendar", "Calendar"),
         ("reminders", "Reminders"),
         ("obsidian", "Obsidian"),
+        ("obsidian.person", "Obsidian · People"),
         ("log.workout", "Training Log"),
         ("log.meal", "Meal Log"),
         ("log.idea", "Idea Inbox")
@@ -30,6 +31,8 @@ struct ConnectionsView: View {
     var body: some View {
         NavigationStack {
             List {
+                AccountSection()
+
                 if !GoogleOAuthConfig.isConfigured {
                     Section {
                         Label {
@@ -184,7 +187,27 @@ struct ConnectionsView: View {
             } header: {
                 Text("Profile note")
             } footer: {
-                Text("“Remember that I work best in the mornings” gets added to that note as a dated bullet under that heading. This is the only case where Sift edits a file you already wrote, so it always asks first — and keeping every addition under one heading means you can review or delete them in one go.")
+                Text("“Remember that I work best in the mornings” gets added to that note as a dated bullet under that heading. Sift only ever edits files under a single heading, so it always asks first — and you can review or delete everything it added in one go.")
+            }
+
+            Section {
+                Toggle("Remember facts about people", isOn: $obsidian.settings.peopleCaptureEnabled)
+
+                if obsidian.settings.peopleCaptureEnabled {
+                    HStack {
+                        Text("New person notes in")
+                        Spacer()
+                        TextField("People", text: $obsidian.settings.peopleFolder)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .frame(maxWidth: 160)
+                    }
+                }
+            } header: {
+                Text("People notes")
+            } footer: {
+                Text("“Sarah mentioned she's moving to Austin” gets added to your “Sarah” note, wherever it lives in the vault — or creates one in this folder if there isn't one. Additions to a person's note always ask first.")
             }
         }
     }

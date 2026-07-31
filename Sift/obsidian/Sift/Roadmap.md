@@ -34,6 +34,8 @@ in priority order:
       structure (task due dates, workout sets/reps, meal macros) with a confidence
       the router already knows how to gate on. See [[Categorization Engine]].
 - [ ] **Notion / Todoist / Google** cloud destinations for power users.
+- [ ] **Sync / backup** — the optional account (Sign in with Apple / Google) is
+      the seam; nothing behind it yet, by design.
 - [ ] **On-watch live transcription** (populate `WCKeys.watchTranscript`) for
       instant confirmation before the phone sees the audio.
 - [ ] **Confirmation loop** — a lightweight "did I get this right?" prompt for

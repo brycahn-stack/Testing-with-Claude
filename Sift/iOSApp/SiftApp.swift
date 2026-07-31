@@ -11,6 +11,12 @@ struct SiftApp: App {
     @StateObject private var google = GoogleConnectionsModel()
     @StateObject private var obsidian = ObsidianConnection()
     @StateObject private var health = HealthLogStore.shared
+    @StateObject private var accounts = AccountStore()
+
+    /// First-launch welcome: shows the sign-in screen once, fully skippable.
+    /// Never shown again either way — an optional identity shouldn't nag.
+    @AppStorage("sift.hasSeenWelcome") private var hasSeenWelcome = false
+    @State private var showingWelcome = false
 
     init() {
         let store = JournalStore()
@@ -50,7 +56,15 @@ struct SiftApp: App {
             .environmentObject(google)
             .environmentObject(obsidian)
             .environmentObject(health)
+            .environmentObject(accounts)
+            .sheet(isPresented: $showingWelcome, onDismiss: { hasSeenWelcome = true }) {
+                AccountView()
+            }
             .task {
+                if !hasSeenWelcome { showingWelcome = true }
+                // Apple sign-ins can be revoked from Settings; don't show an
+                // identity Apple no longer honors.
+                await accounts.refreshAppleCredentialState()
                 _ = await SpeechTranscriber.requestAuthorization()
                 proposals.pruneResolved()
             }

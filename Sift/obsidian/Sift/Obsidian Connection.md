@@ -34,6 +34,7 @@ next sync. Sift never talks to the Mac directly; iCloud does the moving.
 |---|---|---|
 | `ObsidianDestination` | Note, Business Idea | Creates a new `.md` file |
 | `ObsidianProfileDestination` | "Remember that I…" | Appends to your profile note |
+| `ObsidianPersonDestination` | "Sarah mentioned…" | Appends to that person's note |
 
 `ObsidianDestination` sits ahead of `LogDestination.idea` and `NoteDestination`
 in the router and returns `nil` when no vault is connected — the same shadowing
@@ -99,6 +100,41 @@ most guard rails of anything in the app:
 If the profile note doesn't exist yet, the proposal switches to creating it, with
 the same bullet as its body.
 
+## Person notes ("Sarah mentioned…")
+
+The profile machinery pointed at other people's pages — the per-person notes
+(`People/Sarah.md`) many vaults keep:
+
+> *"Sarah mentioned she's moving to Austin in the spring"*
+
+```markdown
+## From Sift
+
+- Mentioned that she's moving to Austin in the spring — *2026-07-31*
+```
+
+Same single-heading rule, same dated bullets, same high-stakes append. What's
+new is the matcher (`ObsidianPersonIntent`), which has a harder job than
+"remember that I…" — third-person speech is looser. So it demands a **telling
+verb** (mentioned, said, told me, talked to/about, met with … about) *and* a
+capitalized single-word name, and rejects pronouns, weekdays, and
+sentence-starters outright. Capitalization is the signal separating "Sarah
+mentioned" from "she mentioned", which is why matching runs on the raw
+transcript, not a lowercased copy.
+
+Two behaviors worth knowing:
+
+- **Existing notes win.** If `Sarah.md` exists *anywhere* in the vault, the fact
+  is appended there. Only when no note exists does Sift propose creating one in
+  the configurable People folder.
+- **Stricter default trust.** Unlike other creates, `obsidian.person` defaults
+  to *always ask* even for new files — a page about a person the user knows is
+  worth a look before it exists. Category-gated to `.note`, so "Sarah said the
+  meeting moved to Thursday at 3" still becomes a calendar proposal.
+
+Facts are rewritten to read naturally inside the note: "Sarah mentioned X" →
+"Mentioned that X"; "talked to Priya about Y" → "Talked about Y".
+
 ## Wikilinks
 
 `ObsidianLinker` only links to notes it has **seen in the index**. A link to a
@@ -128,7 +164,9 @@ skips names common enough to hit by accident (`Ideas`, `Notes`, `Work`, …).
 | Link to existing notes | on | Adds `[[wikilinks]]` for vault notes a memo mentions |
 | Remember facts about me | on | Enables the profile append entirely |
 | Note | `About Me` | Which note facts go into |
-| Under heading | `From Sift` | Which heading they land under |
+| Under heading | `From Sift` | Which heading they land under (person notes reuse it) |
+| Remember facts about people | on | Enables person-note capture entirely |
+| New person notes in | `People` | Where a person's note is created if none exists |
 
 ## Not built yet
 

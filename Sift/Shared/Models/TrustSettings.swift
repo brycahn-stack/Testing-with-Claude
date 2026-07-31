@@ -40,10 +40,12 @@ public final class TrustSettings: ObservableObject {
         }
     }
 
-    /// Conservative by default for anything that leaves the device.
+    /// Conservative by default for anything that leaves the device — and for
+    /// person notes, where even a *created* file puts words in a page the user
+    /// curates about someone they know.
     public static func defaultLevel(for destinationID: String) -> TrustLevel {
         switch destinationID {
-        case "google.gmail", "google.calendar", "calendar":
+        case "google.gmail", "google.calendar", "calendar", "obsidian.person":
             return .alwaysAsk
         default:
             return .autoWhenConfident
