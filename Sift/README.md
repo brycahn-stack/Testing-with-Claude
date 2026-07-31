@@ -98,6 +98,10 @@ xcodegen generate
 open Sift.xcodeproj
 ```
 
+> **Setting this up for the first time?** [`SETUP.md`](SETUP.md) walks through
+> signing, HealthKit, and the Google OAuth client end to end — everything that
+> has to happen outside the code, without needing to read any Swift.
+
 Then in Xcode:
 
 1. Select the **Sift** scheme and set your **Development Team**
