@@ -10,6 +10,7 @@ struct SiftApp: App {
     @StateObject private var session: PhoneSessionManager
     @StateObject private var google = GoogleConnectionsModel()
     @StateObject private var obsidian = ObsidianConnection()
+    @StateObject private var health = HealthLogStore.shared
 
     init() {
         let store = JournalStore()
@@ -29,6 +30,9 @@ struct SiftApp: App {
                 InboxView()
                     .tabItem { Label("Journal", systemImage: "mic.fill") }
 
+                HealthView()
+                    .tabItem { Label("Health", systemImage: "heart.fill") }
+
                 ReviewView()
                     .tabItem { Label("Review", systemImage: "checkmark.circle") }
                     .badge(proposals.pendingCount)
@@ -45,6 +49,7 @@ struct SiftApp: App {
             .environmentObject(pipeline)
             .environmentObject(google)
             .environmentObject(obsidian)
+            .environmentObject(health)
             .task {
                 _ = await SpeechTranscriber.requestAuthorization()
                 proposals.pruneResolved()

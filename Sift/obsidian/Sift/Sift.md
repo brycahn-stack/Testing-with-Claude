@@ -28,6 +28,7 @@ recording and summarizing; Sift *moves things* into the places you already live.
 - [[Categorization Engine]] — how free speech becomes a category
 - [[Routing and Integrations]] — where entries end up, and how to add destinations
 - [[Obsidian Connection]] — vault access, wikilinks, and the "About Me" append
+- [[Health Tab]] — why set data can't live in Apple Health, and the extractor
 - [[Assistant and Review Queue]] — propose → confirm → execute, and the AI seam
 - [[iOS Integration Options]] — the full menu of apps we could connect to
 - [[Roadmap]] — what's next
@@ -49,7 +50,10 @@ recording and summarizing; Sift *moves things* into the places you already live.
 | Obsidian vault (read + write) | ✅ built |
 | Assistant tab (journal Q&A) | ✅ built, local responder |
 | AI model behind the assistant | ⏳ Foundation Models next |
-| Workout / Meal | 🟡 in-app logs (stubbed) |
+| Health tab (training + meals) | ✅ built |
+| Set/rep/weight extraction | ✅ built, rules-based |
+| HealthKit read + session match | ✅ built (read-only) |
+| Meal macros | 🟡 only when stated outright |
 | Business Idea / Note | ✅ Obsidian when connected, log otherwise |
 | Compiled on Apple toolchain | ⏳ first build in Xcode 26 |
 

@@ -196,6 +196,16 @@ struct ProposalCard: View {
             .font(.caption)
             // An edit to a file the user wrote is worth a second look.
             .foregroundStyle(d.mode.isAppend ? .orange : .secondary)
+        case .workoutLog(let d):
+            if !d.exercises.isEmpty {
+                Label("\(d.totalSets) sets · \(d.exercises.count) exercises", systemImage: "list.number")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        case .mealLog(let d):
+            if let calories = d.nutrition.calories {
+                Label("\(Int(calories)) kcal", systemImage: "flame")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         case .logEntry, .note:
             EmptyView()
         }
@@ -210,6 +220,8 @@ struct ProposalCard: View {
         case .logEntry:      return .green
         case .note:          return .gray
         case .markdownNote:  return ObsidianMark.purple
+        case .workoutLog:    return .mint
+        case .mealLog:       return .teal
         }
     }
 }

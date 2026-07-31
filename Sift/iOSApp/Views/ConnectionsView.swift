@@ -22,7 +22,7 @@ struct ConnectionsView: View {
         ("calendar", "Calendar"),
         ("reminders", "Reminders"),
         ("obsidian", "Obsidian"),
-        ("log.workout", "Workout Log"),
+        ("log.workout", "Training Log"),
         ("log.meal", "Meal Log"),
         ("log.idea", "Idea Inbox")
     ]

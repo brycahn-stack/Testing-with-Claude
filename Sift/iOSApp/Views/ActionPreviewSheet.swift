@@ -50,6 +50,14 @@ struct ActionPreviewSheet: View {
                     ObsidianNotePreview(draft: Binding(
                         get: { draft }, set: { payload = .markdownNote($0) }
                     ))
+                case .workoutLog(let draft):
+                    WorkoutLogPreview(draft: Binding(
+                        get: { draft }, set: { payload = .workoutLog($0) }
+                    ))
+                case .mealLog(let draft):
+                    MealLogPreview(draft: Binding(
+                        get: { draft }, set: { payload = .mealLog($0) }
+                    ))
                 }
             }
             .navigationTitle(action.destinationName)

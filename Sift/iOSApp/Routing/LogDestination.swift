@@ -2,21 +2,18 @@ import Foundation
 import SiftCore
 
 /// A catch-all destination that "logs" an entry into a typed bucket kept inside
-/// the app itself: workouts, meals, and business ideas.
+/// the app itself.
 ///
-/// These are the categories that don't have an obvious first-party app to own
-/// them (HealthKit meal/workout logging is possible but heavier, and there's no
-/// system "ideas" app). Keeping them as structured in-app logs gives users an
-/// immediate, browsable record — and each is a clean seam to later push into
-/// HealthKit, Notes, or a third-party service.
+/// Only business ideas still land here: there's no system "ideas" app, and when
+/// no Obsidian vault is connected this is where they go. Training and meals
+/// graduated to `WorkoutDestination` and `MealDestination`, which write
+/// structured records into the Health store instead of a bare summary line.
 struct LogDestination: Destination {
     let id: String
     let displayName: String
     let handledCategory: JournalCategory
 
-    static let workout = LogDestination(id: "log.workout", displayName: "Workout Log", handledCategory: .workout)
-    static let meal    = LogDestination(id: "log.meal",    displayName: "Meal Log",    handledCategory: .meal)
-    static let idea    = LogDestination(id: "log.idea",    displayName: "Idea Inbox",  handledCategory: .businessIdea)
+    static let idea = LogDestination(id: "log.idea", displayName: "Idea Inbox", handledCategory: .businessIdea)
 
     func canHandle(_ entry: JournalEntry, _ result: CategorizationResult) -> Bool {
         result.category == handledCategory

@@ -46,13 +46,14 @@ these and registering it with the `Router`. Nothing else changes.
 | `RemindersDestination` | Task (no time) | EventKit `EKReminder` | ✅ live |
 | `ObsidianProfileDestination` | "Remember that I…" | appends to your `About Me` note | ✅ built |
 | `ObsidianDestination` | Note, Business Idea | writes Markdown into a vault | ✅ built |
-| `LogDestination.workout` | Workout | in-app typed log | 🟡 stub |
-| `LogDestination.meal` | Meal | in-app typed log | 🟡 stub |
+| `WorkoutDestination` | Workout | structured sets into the Health store | ✅ built |
+| `MealDestination` | Meal | meal + stated macros into the Health store | ✅ built |
 | `LogDestination.idea` | Business Idea (fallback) | in-app typed log | 🟡 stub |
 | `NoteDestination` | Note (fallback) | kept in journal | ✅ |
 
 Obsidian is the one destination that both reads and writes — see
-[[Obsidian Connection]].
+[[Obsidian Connection]]. Training and meals go to Sift's own Health store rather
+than Apple Health, for reasons worth reading: [[Health Tab]].
 
 ## Router rules
 

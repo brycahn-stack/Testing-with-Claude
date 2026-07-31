@@ -83,6 +83,8 @@ public enum ActionPayload: Codable, Hashable, Sendable {
     case logEntry(LogDraft)
     case note(NoteDraft)
     case markdownNote(MarkdownNoteDraft)
+    case workoutLog(WorkoutDraft)
+    case mealLog(MealDraft)
 }
 
 // MARK: - Payload types
@@ -172,6 +174,47 @@ public struct NoteDraft: Codable, Hashable, Sendable {
     public init(title: String, body: String) {
         self.title = title
         self.body = body
+    }
+}
+
+/// A training session headed for Sift's own Health store.
+///
+/// Structured rather than a text blob because the whole point is that sets and
+/// reps have nowhere else to live — Apple Health has no data type for them.
+/// `transcript` is always kept, so a session the extractor couldn't parse still
+/// shows the words that were said.
+public struct WorkoutDraft: Codable, Hashable, Sendable {
+    public var exercises: [LoggedExercise]
+    public var transcript: String
+    public var date: Date
+
+    public init(exercises: [LoggedExercise] = [], transcript: String, date: Date = Date()) {
+        self.exercises = exercises
+        self.transcript = transcript
+        self.date = date
+    }
+
+    public var totalSets: Int { exercises.reduce(0) { $0 + $1.sets.count } }
+
+    /// "Squat, Bench Press" — what the card shows at a glance.
+    public var exerciseNames: String {
+        exercises.map(\.name).joined(separator: ", ")
+    }
+}
+
+/// A meal headed for the Health store — and, once macros can be extracted
+/// reliably, for HealthKit as an `HKCorrelation` of type `.food`.
+public struct MealDraft: Codable, Hashable, Sendable {
+    public var summary: String
+    public var transcript: String
+    public var nutrition: Nutrition
+    public var date: Date
+
+    public init(summary: String, transcript: String, nutrition: Nutrition = Nutrition(), date: Date = Date()) {
+        self.summary = summary
+        self.transcript = transcript
+        self.nutrition = nutrition
+        self.date = date
     }
 }
 
@@ -340,6 +383,12 @@ public extension ActionPayload {
             case .createNote:            return "New note: \(d.noteName)"
             case .appendToNote:          return "Add to \(d.noteName)"
             }
+        case .workoutLog(let d):
+            return d.exercises.isEmpty
+                ? "Log training session"
+                : "Log training: \(d.exerciseNames)"
+        case .mealLog(let d):
+            return "Log meal: \(d.summary)"
         }
     }
 
@@ -352,6 +401,8 @@ public extension ActionPayload {
         case .note:          return "note.text"
         case .markdownNote(let d):
             return d.mode.isAppend ? "text.append" : "doc.badge.plus"
+        case .workoutLog:    return "figure.strengthtraining.traditional"
+        case .mealLog:       return "fork.knife"
         }
     }
 
@@ -365,6 +416,8 @@ public extension ActionPayload {
         case .note:          return "Save Note"
         case .markdownNote(let d):
             return d.mode.isAppend ? "Append" : "Create Note"
+        case .workoutLog:    return "Log Session"
+        case .mealLog:       return "Log Meal"
         }
     }
 }

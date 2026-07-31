@@ -42,7 +42,8 @@ is where the name comes from.
    - **Schedule** / task with a time → **Calendar** event (`EventKit` or Google)
    - **Business Idea / Note** → **Obsidian** vault as Markdown, or a typed in-app
      log when no vault is connected
-   - **Workout / Meal** → typed in-app logs
+   - **Workout / Meal** → the **Health tab**, with sets and reps pulled out of
+     the speech
    - Anything low-confidence is **held for review** instead of being auto-filed.
 5. **Review (phone).** `InboxView` shows a feed with a "Needs Review" section up
    top. Tap any entry to see where it landed and correct the category, which
@@ -70,6 +71,7 @@ Sift/
 │   ├── Connectivity/            #   Receives recordings
 │   ├── Google/                  #   OAuth + Keychain for Gmail / Google Calendar
 │   ├── Obsidian/                #   Vault folder access (security-scoped bookmark)
+│   ├── Health/                  #   HealthKit reads + workout session matching
 │   ├── Assistant/               #   JournalContext + the Assistant tab
 │   ├── Routing/                 #   Destination protocol + all destinations
 │   └── Views/                   #   Inbox, Review, Connections, preview sheets
@@ -240,6 +242,53 @@ in-app log when it isn't — the same way Google Calendar shadows Apple Calendar
 
 ---
 
+## Health
+
+Training and meals get their own tab, apart from the life/business feed — body
+data reads as sessions and trends, not as a stream of thoughts.
+
+**Apple Health can't hold set data.** It models sessions and quantities: it knows
+"45 minutes of strength training, 320 kcal" but has no data type for reps, sets,
+or weight lifted. There's no vocabulary for "squat, 5×3, 225 lb". That's why
+every serious lifting app keeps its own database — and it's exactly the gap this
+tab fills.
+
+So the split is three ways:
+
+| Layer | Owner |
+|---|---|
+| Duration, heart rate, calories | **Your watch** — Sift reads it, never duplicates it |
+| Exercises, sets, reps, weight | **Sift** — nowhere else can represent it |
+| How it felt | **Your voice** |
+
+Say *"squats, 5×5 at 225, felt heavy on the last rep"* and you get a structured
+session, linked by timestamp to the workout your watch already recorded, with
+your own words attached.
+
+**Sift never writes a workout to Apple Health.** It would duplicate the watch's
+session *and* credit invented calories to your Activity rings. The entitlement
+asks for read access and an empty share set.
+
+**The extractor is rules, not a model.** Gym language is a rigid little grammar
+— "5x5 at 225", "three sets of eight", "225 for 5", "8, 8, 6 at 185", "two
+twenty five" — so the useful half of this ships without waiting on an LLM. Two
+rules do most of the work: in "A x B" a leading number ≥ 40 is a weight and below
+that a set count (an empty bar is 45 lb), and spoken numbers only merge when the
+middle word is a round ten, so "3 sets of 8" never becomes 38.
+
+When it can't parse something, **nothing is invented and nothing is lost** — the
+session keeps the raw memo and says so. A wrong number in a training log is worse
+than no number, because you'd train off it.
+
+Meals are the mirror image: HealthKit *does* have a home for them, but "a chicken
+salad" carries no calorie count. Macros are recorded only when you state them
+outright. Estimating them is the first thing here that genuinely needs a model.
+
+> HealthKit requires the entitlement to be signed, which needs a paid Apple
+> Developer account.
+
+---
+
 ## Roadmap
 
 The MVP captures, sorts, and files. Natural next steps, roughly in priority order:
@@ -253,8 +302,10 @@ The MVP captures, sorts, and files. Natural next steps, roughly in priority orde
 - [ ] **LLM categorizer** — an `LLMCategorizer: Categorizer` that extracts richer
       structure (task due dates, workout sets/reps, meal macros) with a
       confidence the router already knows how to gate on.
-- [ ] **HealthKit destinations** — log workouts (`HKWorkout`) and meals
-      (`HKDietaryEnergy`, etc.) instead of in-app-only logs.
+- [ ] **Meal macros to HealthKit** — write an `HKCorrelation` of type `.food`
+      once extraction is trustworthy enough to be worth writing.
+- [ ] **Per-exercise history** — progression charts off the set data now being
+      collected.
 - [ ] **Assistant reads the vault** — the vault is already readable, so answering
       from your notes as well as your journal is mostly a `JournalContext` change.
 - [ ] **Obsidian daily notes / templates** for vaults that expect a house format.

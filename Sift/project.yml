@@ -54,11 +54,22 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.brycahn.sift
+    # HealthKit is read-only here: Sift asks for no share permission, because
+    # writing a workout from a voice memo would duplicate the one the watch
+    # already recorded and credit invented calories to the Activity rings.
+    # Requires a paid Apple Developer account for the entitlement to sign.
+    entitlements:
+      path: iOSApp/Support/Sift.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: iOSApp/Support/Info.plist
       properties:
         CFBundleDisplayName: Sift
         UILaunchScreen: {}
+        NSHealthShareUsageDescription: "Sift reads the workouts your watch already recorded so it can show duration, heart rate, and calories next to the sets you logged by voice."
+        NSHealthUpdateUsageDescription: "Sift does not write to Apple Health. Your watch's workout records are left exactly as they are."
         NSMicrophoneUsageDescription: "Sift uses the microphone so the phone can process the recordings you capture on your watch."
         NSSpeechRecognitionUsageDescription: "Sift transcribes your recordings on-device so it can sort them into the right place."
         NSCalendarsUsageDescription: "Sift creates events when you mention a meeting or a specific time."

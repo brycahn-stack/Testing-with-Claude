@@ -30,8 +30,8 @@ public struct Router: Sendable {
             // Ahead of the in-app logs it replaces: ideas and notes go to the
             // vault when there is one, and to the log when there isn't.
             ObsidianDestination(),
-            LogDestination.workout,
-            LogDestination.meal,
+            WorkoutDestination(),
+            MealDestination(),
             LogDestination.idea,
             NoteDestination()
         ]
