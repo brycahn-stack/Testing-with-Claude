@@ -5,8 +5,10 @@ import SiftCore
 /// grouped so entries that need a human glance float to the top.
 struct InboxView: View {
     @EnvironmentObject private var store: JournalStore
+    @EnvironmentObject private var pipeline: EntryPipeline
 
     @State private var filter: JournalCategory?
+    @State private var composing = false
 
     var body: some View {
         NavigationStack {
@@ -36,6 +38,18 @@ struct InboxView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { filterMenu }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        composing = true
+                    } label: {
+                        Label("Type a memo", systemImage: "square.and.pencil")
+                    }
+                }
+            }
+            .sheet(isPresented: $composing) {
+                ComposeEntryView { text in
+                    Task { await pipeline.ingestText(text) }
+                }
             }
         }
     }
@@ -82,6 +96,75 @@ struct InboxView: View {
 }
 
 /// A single feed row.
+/// Typing a memo instead of speaking it.
+///
+/// The watch is the primary way in, but not the only one it should be — you're
+/// in a meeting, or the room is loud, or the transcript came out wrong and you'd
+/// rather retype it than re-record. Text goes through the exact same pipeline as
+/// speech: categorize, propose, route. Nothing about it is a shortcut.
+///
+/// It's also the only way to exercise the app on a simulator, which has no
+/// paired watch to receive from.
+struct ComposeEntryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    let onSubmit: (String) -> Void
+
+    /// Shown under the field on an empty compose — the shapes Sift recognizes,
+    /// which are otherwise invisible until you happen to say one.
+    private let examples = [
+        "Remind me to call the dentist",
+        "Squats 5×5 at 225, felt heavy on the last rep",
+        "Meeting with Sarah Thursday at 3",
+        "Remember that I work best in the mornings"
+    ]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("What's on your mind?", text: $text, axis: .vertical)
+                        .lineLimit(3...8)
+                        .focused($focused)
+                }
+
+                if text.isEmpty {
+                    Section("Try one of these") {
+                        ForEach(examples, id: \.self) { example in
+                            Button {
+                                text = example
+                            } label: {
+                                Text(example)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("New Memo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        onSubmit(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear { focused = true }
+        }
+    }
+}
+
 struct EntryRow: View {
     let entry: JournalEntry
 
